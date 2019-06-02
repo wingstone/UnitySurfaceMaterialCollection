@@ -24,7 +24,7 @@
 			#include "Lighting.cginc"		//光源相关变量
 			#include "AutoLight.cginc"		//光照，阴影相关宏，函数
 
-			#define _USESHADOW 1
+			#define _USESHADOW 0		//阴影启用宏
 
             struct appdata
             {
@@ -77,10 +77,19 @@
 				//surface data
 				float3 normal = normalize(i.normal);
 				float3 viewDir = normalize(_WorldSpaceCameraPos - i.worldPos);
+				float3 reflectDir = reflect(-viewDir, normal);
+
+				//ambient light and light probs
+				fixed3 color = ShadeSH9(half4(normal, 1));
 
 				//lambert
 				float NDotL = saturate(dot(normal, lightDir));
-				fixed3 color = NDotL * col*lightCol;
+				color += NDotL * col*lightCol;
+
+				//ambient refection
+				half4 reflectData = UNITY_SAMPLE_TEXCUBE(unity_SpecCube0, reflectDir);
+				half3 reflectCol = DecodeHDR(reflectData, unity_SpecCube0_HDR);
+				color = lerp(color, reflectCol, _Smoothness);
 
 				//shadow
 				#if _USESHADOW

@@ -268,3 +268,4 @@ Library/*
 Logs/*
 Packages/*
 *.sln
+*.csproj
