@@ -3,7 +3,11 @@
     Properties
     {
         _MainTex ("Texture", 2D) = "white" {}
+		_SpeculerTex("SpeculerTex", 2D) = "white"{}
+		_NormalTex("NormalTex", 2D) = "bump"{}
+
 		_Smoothness ("Smoothness", Range(0,1)) = 0.5
+		_EnviromentIntensity("EnviromentIntensity", Range(0,1)) = 0.5
     }
     SubShader
     {
@@ -24,12 +28,16 @@
 			#include "Lighting.cginc"		//光源相关变量
 			#include "AutoLight.cginc"		//光照，阴影相关宏，函数
 
+			#include "BRDF.cginc"
+
 			#define _USESHADOW 0		//阴影启用宏
+			#define MIPMAP_STEP_COUNT 6
 
             struct appdata
             {
                 float4 vertex : POSITION;
 				float3 normal : NORMAL;
+				float4 tangent : TANGENT;
                 float2 uv : TEXCOORD0;
             };
 
@@ -42,22 +50,38 @@
 				SHADOW_COORDS(2)
 				#endif
 
-				float3 normal : NORMAL;
+				float3 tangent : TEXCOORD3;
+				float3 binormal : TEXCOORD4;
+				float3 normal : TEXCOORD5;
+
                 float4 pos : SV_POSITION;		//shadow宏要求此处必须为pos变量，shit。。。
             };
 
             sampler2D _MainTex;
             float4 _MainTex_ST;
+			sampler2D _SpeculerTex;
+			float4 _SpeculerTex_ST;
+			sampler2D _NormalTex;
+			float4 _NormalTex_ST;
+
 			float _Smoothness;
+			float _EnviromentIntensity;
 
             v2f vert (appdata v)
             {
                 v2f o;
                 o.pos = UnityObjectToClipPos(v.vertex);
+				o.worldPos = mul(UNITY_MATRIX_M, v.vertex).xyz;
+				o.uv = TRANSFORM_TEX(v.uv, _MainTex);
 
 				o.normal = UnityObjectToWorldNormal(v.normal);
-                o.uv = TRANSFORM_TEX(v.uv, _MainTex);
-				o.worldPos = mul(UNITY_MATRIX_M, v.vertex).xyz;
+				o.tangent = UnityObjectToWorldDir(v.tangent.xyz);
+
+				half3x3 tangentToWorld = CreateTangentToWorldPerVertex(o.normal, o.tangent, v.tangent.w);
+				o.tangent = tangentToWorld[0];
+				o.binormal = tangentToWorld[1];
+				o.normal = tangentToWorld[2];
+				
 
 				#if _USESHADOW
 				TRANSFER_SHADOW(o)
@@ -68,28 +92,46 @@
             fixed4 frag (v2f i) : SV_Target
             {
                 // sample the texture
-                fixed4 col = tex2D(_MainTex, i.uv);
+				float3 color = 0;
+                fixed3 baseColor = tex2D(_MainTex, i.uv);
+				fixed3 speculerColor = tex2D(_SpeculerTex, i.uv);
+				fixed3 texNormal = UnpackNormal(tex2D(_NormalTex, i.uv));
 
 				//light data
 				float3 lightCol = _LightColor0.rgb;
 				float3 lightDir = normalize(_WorldSpaceLightPos0.xyz);
 
 				//surface data
-				float3 normal = normalize(i.normal);
+				float3 normal = normalize(texNormal.x*i.tangent + texNormal.y*i.binormal + texNormal.z*i.normal);
 				float3 viewDir = normalize(_WorldSpaceCameraPos - i.worldPos);
 				float3 reflectDir = reflect(-viewDir, normal);
+				float3 halfDir = normalize(viewDir + lightDir);
 
-				//ambient light and light probs
-				fixed3 color = ShadeSH9(half4(normal, 1));
+				float LDotN = saturate(dot(lightDir, normal));
+				float VDotN = dot(viewDir, normal);
+				float VDotH = dot(viewDir, halfDir);
+				float NDotH = dot(normal, halfDir);
 
-				//lambert
-				float NDotL = saturate(dot(normal, lightDir));
-				color += NDotL * col*lightCol;
+				float roughness = 1 - _Smoothness;
+				roughness = roughness * roughness;
 
-				//ambient refection
+				//indirent light
+				color += ShadeSH9(half4(normal, 1));
+
+				//diffuse data
+				float3 diffuseBRDF = DesineyDiffuseBRDF(baseColor, roughness, VDotH, LDotN, VDotN);
+				color += LDotN * lightCol*diffuseBRDF;
+
+				//speculer data
+				float3 speculerBRDF = DesineySpeculerBRDF(speculerColor, roughness, NDotH, VDotH, LDotN, VDotN);
+				color += LDotN == 0 ? 0 : LDotN * lightCol*speculerBRDF;
+
+				//IBL reflection
 				half4 reflectData = UNITY_SAMPLE_TEXCUBE(unity_SpecCube0, reflectDir);
 				half3 reflectCol = DecodeHDR(reflectData, unity_SpecCube0_HDR);
-				color = lerp(color, reflectCol, _Smoothness);
+
+				float3 IBLColor = UNITY_SAMPLE_TEXCUBE_LOD(unity_SpecCube0, reflectDir, roughness*MIPMAP_STEP_COUNT);
+				color += IBLColor * _EnviromentIntensity;
 
 				//shadow
 				#if _USESHADOW
