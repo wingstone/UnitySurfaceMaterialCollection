@@ -5,9 +5,11 @@
         _MainTex ("Texture", 2D) = "white" {}
 		_SpeculerTex("SpeculerTex", 2D) = "white"{}
 		_NormalTex("NormalTex", 2D) = "bump"{}
+		_OcclusionTex("OcclusionTex", 2D) = "white"{}
+		_EmissionTex("EmissionTex", 2D) = "black"{}
 
-		_Smoothness ("Smoothness", Range(0,1)) = 0.5
-		_EnviromentIntensity("EnviromentIntensity", Range(0,1)) = 0.5
+		_SmoothnessScale("SmoothnessScale", Range(0,1)) = 1
+		_EnviromentIntensity("EnviromentIntensity", Range(0,1)) = 1
     }
     SubShader
     {
@@ -30,8 +32,9 @@
 
 			#include "BRDF.cginc"
 
-			#define _USESHADOW 0		//阴影启用宏
+			#define _USESHADOW 1		//阴影启用宏
 			#define MIPMAP_STEP_COUNT 6
+			#define SPECULER_GLOSSNESS
 
             struct appdata
             {
@@ -47,12 +50,12 @@
 				float3 worldPos : TEXCOORD1;
 
 				#if _USESHADOW
-				SHADOW_COORDS(2)
+				UNITY_LIGHTING_COORDS(2,3)
 				#endif
 
-				float3 tangent : TEXCOORD3;
-				float3 binormal : TEXCOORD4;
-				float3 normal : TEXCOORD5;
+				float3 tangent : TEXCOORD4;
+				float3 binormal : TEXCOORD5;
+				float3 normal : TEXCOORD6;
 
                 float4 pos : SV_POSITION;		//shadow宏要求此处必须为pos变量，shit。。。
             };
@@ -63,8 +66,12 @@
 			float4 _SpeculerTex_ST;
 			sampler2D _NormalTex;
 			float4 _NormalTex_ST;
+			sampler2D _OcclusionTex;
+			float4 _OcclusionTex_ST;
+			sampler2D _EmissionTex;
+			float4 _EmissionTex_ST;
 
-			float _Smoothness;
+			float _SmoothnessScale;
 			float _EnviromentIntensity;
 
             v2f vert (appdata v)
@@ -84,7 +91,7 @@
 				
 
 				#if _USESHADOW
-				TRANSFER_SHADOW(o)
+				UNITY_TRANSFER_LIGHTING(o, v.uv);
 				#endif
                 return o;
             }
@@ -93,13 +100,29 @@
             {
                 // sample the texture
 				float3 color = 0;
-                fixed3 baseColor = tex2D(_MainTex, i.uv);
-				fixed3 speculerColor = tex2D(_SpeculerTex, i.uv);
+				#ifdef UNITY_COLORSPACE_GAMMA
+                fixed3 baseColor = GammaToLinearSpace(tex2D(_MainTex, i.uv));
+				fixed3 speculerColor = GammaToLinearSpace(tex2D(_SpeculerTex, i.uv));
 				fixed3 texNormal = UnpackNormal(tex2D(_NormalTex, i.uv));
+				fixed3 occlusion = GammaToLinearSpace(tex2D(_OcclusionTex, i.uv));
+				fixed3 emission = GammaToLinearSpace(tex2D(_EmissionTex, i.uv));
+				#else
+				fixed3 baseColor = tex2D(_MainTex, i.uv);
+				fixed3 speculerColor = tex2D(_SpeculerTex, i.uv);
+				fixed3 texNormal = UnpackNormal(tex2D(_NormalTex, i.uv);
+				fixed3 occlusion = tex2D(_OcclusionTex, i.uv);
+				fixed3 emission = tex2D(_EmissionTex, i.uv);
+				#endif
 
 				//light data
 				float3 lightCol = _LightColor0.rgb;
 				float3 lightDir = normalize(_WorldSpaceLightPos0.xyz);
+
+				//shadow
+				#if _USESHADOW
+				UNITY_LIGHT_ATTENUATION(atten, i, i.worldPos);
+				lightCol *= atten;
+				#endif
 
 				//surface data
 				float3 normal = normalize(texNormal.x*i.tangent + texNormal.y*i.binormal + texNormal.z*i.normal);
@@ -108,37 +131,57 @@
 				float3 halfDir = normalize(viewDir + lightDir);
 
 				float LDotN = saturate(dot(lightDir, normal));
-				float VDotN = dot(viewDir, normal);
-				float VDotH = dot(viewDir, halfDir);
-				float NDotH = dot(normal, halfDir);
+				float VDotN = saturate(dot(viewDir, normal));
+				float VDotH = saturate(dot(viewDir, halfDir));
+				float NDotH = saturate(dot(normal, halfDir));
 
-				float roughness = 1 - _Smoothness;
-				roughness = roughness * roughness;
+				float glossness = _SmoothnessScale;
+				#ifdef SPECULER_GLOSSNESS
+				glossness *= tex2D(_SpeculerTex, i.uv).a;
+				#endif
 
-				//indirent light
-				color += ShadeSH9(half4(normal, 1));
+				float roughness = 1 - glossness;
+
+				//roughness = roughness * roughness;
+
+				//indirect light
+				color += ShadeSH9(half4(normal, 1))* baseColor* occlusion;
 
 				//diffuse data
 				float3 diffuseBRDF = DesineyDiffuseBRDF(baseColor, roughness, VDotH, LDotN, VDotN);
 				color += LDotN * lightCol*diffuseBRDF;
 
 				//speculer data
-				float3 speculerBRDF = DesineySpeculerBRDF(speculerColor, roughness, NDotH, VDotH, LDotN, VDotN);
-				color += LDotN == 0 ? 0 : LDotN * lightCol*speculerBRDF;
+				float3 speculerBRDF = UnitySpeculerBRDF(speculerColor, roughness, NDotH, VDotH, LDotN, VDotN);
+				color += LDotN * lightCol*speculerBRDF;
 
-				//IBL reflection
-				half4 reflectData = UNITY_SAMPLE_TEXCUBE(unity_SpecCube0, reflectDir);
-				half3 reflectCol = DecodeHDR(reflectData, unity_SpecCube0_HDR);
+				//IBL reflection from unity
+				//half4 reflectData = UNITY_SAMPLE_TEXCUBE(unity_SpecCube0, reflectDir);
+				//half3 reflectCol = DecodeHDR(reflectData, unity_SpecCube0_HDR);
+				//IBL reflection IBLColor
+				half3 IBLColor;
+				#ifdef _GLOSSYREFLECTIONS_OFF
+				IBLColor = unity_IndirectSpecColor.rgb;
 
-				float3 IBLColor = UNITY_SAMPLE_TEXCUBE_LOD(unity_SpecCube0, reflectDir, roughness*MIPMAP_STEP_COUNT);
-				color += IBLColor * _EnviromentIntensity;
+				#else
+				half mip = roughness*(1.7-0.7*roughness)*UNITY_SPECCUBE_LOD_STEPS;
+				half4 rgbm = UNITY_SAMPLE_TEXCUBE_LOD(unity_SpecCube0, reflectDir, mip);
+				IBLColor = DecodeHDR(rgbm, unity_SpecCube0_HDR)*occlusion;
 
-				//shadow
-				#if _USESHADOW
-				float shadow = SHADOW_ATTENUATION(i);
-				color *= shadow;
 				#endif
+				
+				//IBL reflection fresnel and surfaceReduction
+				float surfaceReduction = 1.0 / (Pow4(roughness) + 1.0);
+				float oneMinusReflectivity = 1 - SpecularStrength(speculerColor);
+				half grazingTerm = saturate(glossness + (1 - oneMinusReflectivity));
+				half t = Pow4(1 - VDotN);
+				half3 fresnel = lerp(speculerColor, grazingTerm, t);
+				color += surfaceReduction * IBLColor *fresnel* _EnviromentIntensity;
 
+				color += emission;
+				#ifdef UNITY_COLORSPACE_GAMMA
+				color = LinearToGammaSpace(color);
+				#endif
                 return fixed4(color, 1);
             }
             ENDCG

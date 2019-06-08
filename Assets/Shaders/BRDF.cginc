@@ -1,5 +1,10 @@
 //note: LDotH = VDotH;
 
+float Pow4(float t)
+{
+	return t * t*t*t;
+}
+
 float Pow5(float t)
 {
 	return t * t*t*t*t;
@@ -33,6 +38,26 @@ float3 DesineySpeculerBRDF(float3 speculerColor, float roughness, float NDotH, f
 	float G = GV * GL;
 
 	return D * G / (4 * LDotN*VDotN)* F;
+}
+
+//unity speculer brdf
+float3 UnitySpeculerBRDF(float3 speculerColor, float roughness, float NDotH, float VDotH, float LDotN, float VDotN)
+{
+	//claculate D
+	float alpha = roughness * roughness;
+	float alpha2 = alpha * alpha;
+	float tmp = NDotH * NDotH*(alpha2 - 1) + 1;
+	float D = alpha * alpha *UNITY_INV_PI / (tmp*tmp+1e-7f);
+
+	//calculate F
+	float F = speculerColor + (1 - speculerColor)*Pow5(1 - VDotH);
+
+	//culate G
+	float GV = VDotN * sqrt(VDotN*VDotN*(1 - alpha2) + alpha2);
+	float GL = LDotN * sqrt(LDotN*LDotN*(1 - alpha2) + alpha2);
+	float G = 0.5/(GV+GL+1e-5f);
+
+	return D * G *UNITY_PI* F;
 }
 
 //unreal reference:https://de45xmedrsdbp.cloudfront.net/Resources/files/2013SiggraphPresentationsNotes-26915738.pdf
