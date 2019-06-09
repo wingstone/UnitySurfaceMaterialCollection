@@ -7,3 +7,5 @@
 参考[这里](https://docs.unity3d.com/Manual/SL-DepthTextures.html)，unity给出了答案
 
 另外使用unity内部的_CameraDepthTexture时，其范围是（0，1）；
+
+PBR部分采用了unity内部的Gamma空间计算方法；针对其它算法gamma空间与linear空间的问题还待解决；

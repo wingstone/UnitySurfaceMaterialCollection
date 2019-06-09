@@ -15,7 +15,7 @@ float Pow5(float t)
 float3 DesineyDiffuseBRDF(float3 baseColor, float roughness, float LDotH, float LDotN, float VDotN)
 {
 	float FD90 = 0.5 + 2 * LDotH*LDotH*roughness;
-	return UNITY_INV_PI * (1 + (FD90 - 1)*Pow5(1 - LDotN))*(1 + (FD90 - 1)*Pow5(1 - VDotN))*baseColor;
+	return (1 + (FD90 - 1)*Pow5(1 - LDotN))*(1 + (FD90 - 1)*Pow5(1 - VDotN))*baseColor;
 }
 
 //disney speculer BRDF
@@ -45,9 +45,10 @@ float3 UnitySpeculerBRDF(float3 speculerColor, float roughness, float NDotH, flo
 {
 	//claculate D
 	float alpha = roughness * roughness;
+	alpha = max(alpha, 0.002);
 	float alpha2 = alpha * alpha;
 	float tmp = NDotH * NDotH*(alpha2 - 1) + 1;
-	float D = alpha * alpha *UNITY_INV_PI / (tmp*tmp+1e-7f);
+	float D = alpha2 *UNITY_INV_PI / (tmp*tmp+1e-7f);
 
 	//calculate F
 	float F = speculerColor + (1 - speculerColor)*Pow5(1 - VDotH);
@@ -57,7 +58,12 @@ float3 UnitySpeculerBRDF(float3 speculerColor, float roughness, float NDotH, flo
 	float GL = LDotN * sqrt(LDotN*LDotN*(1 - alpha2) + alpha2);
 	float G = 0.5/(GV+GL+1e-5f);
 
-	return D * G *UNITY_PI* F;
+	float specularTerm = D * G *UNITY_PI;
+#   ifdef UNITY_COLORSPACE_GAMMA
+	specularTerm = sqrt(max(1e-4h, specularTerm));
+#   endif
+
+	return specularTerm * F;
 }
 
 //unreal reference:https://de45xmedrsdbp.cloudfront.net/Resources/files/2013SiggraphPresentationsNotes-26915738.pdf

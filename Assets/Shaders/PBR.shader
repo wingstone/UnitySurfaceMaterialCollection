@@ -100,19 +100,19 @@
             {
                 // sample the texture
 				float3 color = 0;
-				#ifdef UNITY_COLORSPACE_GAMMA
-                fixed3 baseColor = GammaToLinearSpace(tex2D(_MainTex, i.uv));
-				fixed3 speculerColor = GammaToLinearSpace(tex2D(_SpeculerTex, i.uv));
-				fixed3 texNormal = UnpackNormal(tex2D(_NormalTex, i.uv));
-				fixed3 occlusion = GammaToLinearSpace(tex2D(_OcclusionTex, i.uv));
-				fixed3 emission = GammaToLinearSpace(tex2D(_EmissionTex, i.uv));
-				#else
+				//#ifdef UNITY_COLORSPACE_GAMMA
+    //            fixed3 baseColor = GammaToLinearSpace(tex2D(_MainTex, i.uv));
+				//fixed3 speculerColor = GammaToLinearSpace(tex2D(_SpeculerTex, i.uv));
+				//fixed3 texNormal = UnpackNormal(tex2D(_NormalTex, i.uv));
+				//fixed3 occlusion = GammaToLinearSpace(tex2D(_OcclusionTex, i.uv));
+				//fixed3 emission = GammaToLinearSpace(tex2D(_EmissionTex, i.uv));
+				//#else
 				fixed3 baseColor = tex2D(_MainTex, i.uv);
 				fixed3 speculerColor = tex2D(_SpeculerTex, i.uv);
-				fixed3 texNormal = UnpackNormal(tex2D(_NormalTex, i.uv);
+				fixed3 texNormal = UnpackNormal(tex2D(_NormalTex, i.uv));
 				fixed3 occlusion = tex2D(_OcclusionTex, i.uv);
 				fixed3 emission = tex2D(_EmissionTex, i.uv);
-				#endif
+				//#endif
 
 				//light data
 				float3 lightCol = _LightColor0.rgb;
@@ -142,8 +142,6 @@
 
 				float roughness = 1 - glossness;
 
-				//roughness = roughness * roughness;
-
 				//indirect light
 				color += ShadeSH9(half4(normal, 1))* baseColor* occlusion;
 
@@ -172,6 +170,11 @@
 				
 				//IBL reflection fresnel and surfaceReduction
 				float surfaceReduction = 1.0 / (Pow4(roughness) + 1.0);
+				#ifdef UNITY_COLORSPACE_GAMMA
+					surfaceReduction = 1.0 - 0.28*roughness*roughness*roughness;      // 1-0.28*x^3 as approximation for (1/(x^4+1))^(1/2.2) on the domain [0;1]
+				#else
+					surfaceReduction = = 1.0 / (Pow4(roughness) + 1.0);           // fade \in [0.5;1]
+				#endif
 				float oneMinusReflectivity = 1 - SpecularStrength(speculerColor);
 				half grazingTerm = saturate(glossness + (1 - oneMinusReflectivity));
 				half t = Pow4(1 - VDotN);
@@ -179,9 +182,9 @@
 				color += surfaceReduction * IBLColor *fresnel* _EnviromentIntensity;
 
 				color += emission;
-				#ifdef UNITY_COLORSPACE_GAMMA
-				color = LinearToGammaSpace(color);
-				#endif
+				//#ifdef UNITY_COLORSPACE_GAMMA
+				//color = LinearToGammaSpace(color);
+				//#endif
                 return fixed4(color, 1);
             }
             ENDCG
@@ -196,9 +199,33 @@
 
 		Pass
 		{
-			Tags {"LightMode" = "ShadowCaster"}
+			//copy from unity standard shadowcaster
+			Name "ShadowCaster"
+			Tags { "LightMode" = "ShadowCaster" }
 
-			
+			ZWrite On ZTest LEqual
+
+			CGPROGRAM
+			#pragma target 3.0
+
+			// -------------------------------------
+
+
+			#pragma shader_feature _ _ALPHATEST_ON _ALPHABLEND_ON _ALPHAPREMULTIPLY_ON
+			#pragma shader_feature _SPECGLOSSMAP
+			#pragma shader_feature _SMOOTHNESS_TEXTURE_ALBEDO_CHANNEL_A
+			#pragma shader_feature _PARALLAXMAP
+			#pragma multi_compile_shadowcaster
+			#pragma multi_compile_instancing
+			// Uncomment the following line to enable dithering LOD crossfade. Note: there are more in the file to uncomment for other passes.
+			//#pragma multi_compile _ LOD_FADE_CROSSFADE
+
+			#pragma vertex vertShadowCaster
+			#pragma fragment fragShadowCaster
+
+			#include "UnityStandardShadow.cginc"
+
+			ENDCG
 		}
     }
 }
