@@ -1,4 +1,4 @@
-﻿Shader "Custom/PBR"
+﻿Shader "Custom/UnrealPBR"
 {
     Properties
     {
@@ -7,6 +7,8 @@
 		_NormalTex("NormalTex", 2D) = "bump"{}
 		_OcclusionTex("OcclusionTex", 2D) = "white"{}
 		_EmissionTex("EmissionTex", 2D) = "black"{}
+
+		PreIntegratedGF("PreIntegratedGF", 2D) = "white"
 
 		_SmoothnessScale("SmoothnessScale", Range(0,1)) = 1
 		_EnviromentIntensity("EnviromentIntensity", Range(0,1)) = 1
@@ -150,7 +152,7 @@
 				color += LDotN * lightCol*diffuseBRDF;
 
 				//speculer data
-				float3 speculerBRDF = UnitySpeculerBRDF(speculerColor, roughness, NDotH, VDotH, LDotN, VDotN);
+				float3 speculerBRDF = UnrealSpeculerBRDF(speculerColor, roughness, NDotH, VDotH, LDotN, VDotN);
 				color += LDotN * lightCol*speculerBRDF;
 
 				//IBL reflection from unity

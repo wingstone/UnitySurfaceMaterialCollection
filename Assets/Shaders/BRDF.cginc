@@ -66,6 +66,22 @@ float3 UnitySpeculerBRDF(float3 speculerColor, float roughness, float NDotH, flo
 	return specularTerm * F;
 }
 
+float3 UnityEnviromentBRDF(float3 speculerColor, float roughness, float VDotN)
+{
+	float surfaceReduction = 1.0 / (Pow4(roughness) + 1.0);
+#ifdef UNITY_COLORSPACE_GAMMA
+	surfaceReduction = 1.0 - 0.28*roughness*roughness*roughness;      // 1-0.28*x^3 as approximation for (1/(x^4+1))^(1/2.2) on the domain [0;1]
+#else
+	surfaceReduction = = 1.0 / (Pow4(roughness) + 1.0);           // fade \in [0.5;1]
+#endif
+	float oneMinusReflectivity = 1 - SpecularStrength(speculerColor);
+	half grazingTerm = saturate(1 - roughness + (1 - oneMinusReflectivity));
+	half t = Pow4(1 - VDotN);
+	half3 fresnel = lerp(speculerColor, grazingTerm, t);
+
+	return surfaceReduction * fresnel;
+}
+
 //unreal reference:https://de45xmedrsdbp.cloudfront.net/Resources/files/2013SiggraphPresentationsNotes-26915738.pdf
 //unreal diffuse brdf
 float3 UnrealDiffuseBRDF(float3 baseColor)
@@ -93,6 +109,70 @@ float3 UnrealSpeculerBRDF(float3 speculerColor, float roughness, float NDotH, fl
 	float G = GV * GL;
 
 	return D * G / (4 * LDotN*VDotN)* F;
+}
+
+//unreal cloth brdf
+float3 UnrealClothSpeculerBRDF(float3 fuzzColor, float cloth, float3 speculerColor, float roughness, float NDotH, float VDotH, float LDotN, float VDotN)
+{
+	//claculate D
+	float alpha = roughness * roughness;
+	float alpha2 = alpha * alpha;
+	float tmp = NDotH * NDotH*(alpha2 - 1) + 1;
+	float D = alpha * alpha / (UNITY_PI*tmp*tmp);
+
+	//calculate F
+	tmp = (-5.55473*VDotH - 6.98316)*VDotH;
+	float3 F = speculerColor + (1 - speculerColor)*pow(2, tmp);
+
+	//culate G
+	float k = (roughness + 1)*(roughness + 1) / 8;
+	float GV = 1.0 / (VDotN*(1 - k) + k);
+	float GL = 1.0 / (LDotN*(1 - k) + k);
+	float G = GV * GL;
+
+	float3 spec1 =0.25* D * G * F;
+
+	//calculate cloth
+	float d = (1 - alpha2)*NDotH*NDotH + alpha2;
+	float D2 = rcp(UNITY_PI*(1 + 4 * alpha2))*(1 + 4 * alpha2*alpha2 / (d*d));
+	float Vis2 = rcp(4 * (LDotN + VDotN - LDotN * VDotN));
+	float3 Fc = Pow5(1 - VDotH);
+	float3 F2 = saturate(50.0*fuzzColor.g)*Fc + (1 - Fc)*fuzzColor;
+	float3 spec2 = (D2 * Vis2)* F2;
+
+	return lerp(spec1, spec2, cloth);
+}
+
+#ifndef PreIntegratedGF
+sampler2D		PreIntegratedGF;
+float4 PreIntegratedGF_ST;
+#endif
+
+half3 UnrealEnviromentBRDF(half3 SpecularColor, half Roughness, half VDotN)
+{
+	// Importance sampled preintegrated G * F
+	float2 AB = tex2D(PreIntegratedGF, float2(VDotN, Roughness)).rg;
+
+	// Anything less than 2% is physically impossible and is instead considered to be shadowing 
+	float3 GF = SpecularColor * AB.x + saturate(50.0 * SpecularColor.g) * AB.y;
+	return GF;
+}
+
+half3 UnrealEnviromentBRDFApprox(half3 SpecularColor, half Roughness, half VDotN)
+{
+	// [ Lazarov 2013, "Getting More Physical in Call of Duty: Black Ops II" ]
+	// Adaptation to fit our G term.
+	const half4 c0 = { -1, -0.0275, -0.572, 0.022 };
+	const half4 c1 = { 1, 0.0425, 1.04, -0.04 };
+	half4 r = Roughness * c0 + c1;
+	half a004 = min(r.x * r.x, exp2(-9.28 * VDotN)) * r.x + r.y;
+	half2 AB = half2(-1.04, 1.04) * a004 + r.zw;
+
+	// Anything less than 2% is physically impossible and is instead considered to be shadowing
+	// Note: this is needed for the 'specular' show flag to work, since it uses a SpecularColor of 0
+	AB.y *= saturate(50.0 * SpecularColor.g);
+
+	return SpecularColor * AB.x + AB.y;
 }
 
 //Optimizing BRDF for morbile, reference:https://community.arm.com/developer/tools-software/graphics/b/blog/posts/moving-mobile-graphics#siggraph2015

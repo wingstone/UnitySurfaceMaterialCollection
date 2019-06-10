@@ -1,4 +1,4 @@
-﻿Shader "Custom/PBR"
+﻿Shader "Custom/Cloth"
 {
     Properties
     {
@@ -7,6 +7,9 @@
 		_NormalTex("NormalTex", 2D) = "bump"{}
 		_OcclusionTex("OcclusionTex", 2D) = "white"{}
 		_EmissionTex("EmissionTex", 2D) = "black"{}
+
+		_FuzzColor("FuzzColor", Color) = (1,1,1,1)
+		_Cloth("Cloth", Range(0,1))= 0
 
 		_SmoothnessScale("SmoothnessScale", Range(0,1)) = 1
 		_EnviromentIntensity("EnviromentIntensity", Range(0,1)) = 1
@@ -70,6 +73,9 @@
 			float4 _OcclusionTex_ST;
 			sampler2D _EmissionTex;
 			float4 _EmissionTex_ST;
+
+			float3 _FuzzColor;
+			float _Cloth;
 
 			float _SmoothnessScale;
 			float _EnviromentIntensity;
@@ -150,7 +156,7 @@
 				color += LDotN * lightCol*diffuseBRDF;
 
 				//speculer data
-				float3 speculerBRDF = UnitySpeculerBRDF(speculerColor, roughness, NDotH, VDotH, LDotN, VDotN);
+				float3 speculerBRDF = UnrealClothSpeculerBRDF(_FuzzColor, _Cloth, speculerColor, roughness, NDotH, VDotH, LDotN, VDotN);
 				color += LDotN * lightCol*speculerBRDF;
 
 				//IBL reflection from unity
