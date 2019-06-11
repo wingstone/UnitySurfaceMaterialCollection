@@ -1,4 +1,4 @@
-﻿Shader "Custom/UnrealPBR"
+﻿Shader "Custom/AnisotropicPBR"
 {
     Properties
     {
@@ -8,7 +8,8 @@
 		_OcclusionTex("OcclusionTex", 2D) = "white"{}
 		_EmissionTex("EmissionTex", 2D) = "black"{}
 
-		_PreIntegratedGF("PreIntegratedGF", 2D) = "white"{}
+		_AlphaX("Roughness in Brush Direction", Range(0, 1)) = 1.0
+		_AlphaY("Roughness orthogonal to Brush Direction", Range(0, 1)) = 1.0
 
 		_SmoothnessScale("SmoothnessScale", Range(0,1)) = 1
 		_EnviromentIntensity("EnviromentIntensity", Range(0,1)) = 1
@@ -102,22 +103,22 @@
             {
                 // sample the texture
 				float3 color = 0;
-				#ifdef UNITY_COLORSPACE_GAMMA
-                fixed3 baseColor = GammaToLinearSpace(tex2D(_MainTex, i.uv));
-				fixed3 speculerColor = GammaToLinearSpace(tex2D(_SpeculerTex, i.uv));
-				fixed3 texNormal = UnpackNormal(tex2D(_NormalTex, i.uv));
-				fixed3 occlusion = GammaToLinearSpace(tex2D(_OcclusionTex, i.uv));
-				fixed3 emission = GammaToLinearSpace(tex2D(_EmissionTex, i.uv));
-				#else
+				//#ifdef UNITY_COLORSPACE_GAMMA
+    //            fixed3 baseColor = GammaToLinearSpace(tex2D(_MainTex, i.uv));
+				//fixed3 speculerColor = GammaToLinearSpace(tex2D(_SpeculerTex, i.uv));
+				//fixed3 texNormal = UnpackNormal(tex2D(_NormalTex, i.uv));
+				//fixed3 occlusion = GammaToLinearSpace(tex2D(_OcclusionTex, i.uv));
+				//fixed3 emission = GammaToLinearSpace(tex2D(_EmissionTex, i.uv));
+				//#else
 				fixed3 baseColor = tex2D(_MainTex, i.uv);
 				fixed3 speculerColor = tex2D(_SpeculerTex, i.uv);
 				fixed3 texNormal = UnpackNormal(tex2D(_NormalTex, i.uv));
 				fixed3 occlusion = tex2D(_OcclusionTex, i.uv);
 				fixed3 emission = tex2D(_EmissionTex, i.uv);
-				#endif
+				//#endif
 
 				//light data
-				float3 lightCol = GammaToLinearSpace(_LightColor0.rgb);
+				float3 lightCol = _LightColor0.rgb;
 				float3 lightDir = normalize(_WorldSpaceLightPos0.xyz);
 
 				//shadow
@@ -131,6 +132,9 @@
 				float3 viewDir = normalize(_WorldSpaceCameraPos - i.worldPos);
 				float3 reflectDir = reflect(-viewDir, normal);
 				float3 halfDir = normalize(viewDir + lightDir);
+
+				float3 tangent = normalize(i.tangent);
+				float3 binormal = cross(normal, tangent);
 
 				float LDotN = saturate(dot(lightDir, normal));
 				float VDotN = saturate(dot(viewDir, normal));
@@ -151,8 +155,13 @@
 				float3 diffuseBRDF = DesineyDiffuseBRDF(baseColor, roughness, VDotH, LDotN, VDotN);
 				color += LDotN * lightCol*diffuseBRDF;
 
+				float dotHTAlphaX =
+					dot(halfDir, tangent) / _AlphaX;
+				float dotHBAlphaY =
+					dot(halfDir, binormal) / _AlphaY;
+
 				//speculer data
-				float3 speculerBRDF = UnrealSpeculerBRDF(speculerColor, roughness, NDotH, VDotH, LDotN, VDotN);
+				float3 speculerBRDF = WardBRDF(speculerColor, dotHTAlphaX, dotHBAlphaY, NDotH, VDotH, LDotN, VDotN);
 				color += LDotN * lightCol*speculerBRDF;
 
 				//IBL reflection from unity
@@ -171,13 +180,13 @@
 				#endif
 				
 				//IBL reflection
-				float3 enviromentBRDF = UnrealEnviromentBRDF(speculerColor, roughness, VDotN);
+				float3 enviromentBRDF = UnityEnviromentBRDF(speculerColor, roughness, VDotN);
 				color += IBLColor * enviromentBRDF* _EnviromentIntensity;
 
 				color += emission;
-				#ifdef UNITY_COLORSPACE_GAMMA
-				color = LinearToGammaSpace(color);
-				#endif
+				//#ifdef UNITY_COLORSPACE_GAMMA
+				//color = LinearToGammaSpace(color);
+				//#endif
                 return fixed4(color, 1);
             }
             ENDCG

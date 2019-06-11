@@ -104,11 +104,11 @@ float3 UnrealSpeculerBRDF(float3 speculerColor, float roughness, float NDotH, fl
 
 	//culate G
 	float k = (roughness + 1)*(roughness + 1) / 8;
-	float GV = VDotN / (VDotN*(1 - k) + k);
-	float GL = LDotN / (LDotN*(1 - k) + k);
+	float GV = 1.0 / (VDotN*(1 - k) + k);
+	float GL = 1.0 / (LDotN*(1 - k) + k);
 	float G = GV * GL;
 
-	return D * G / (4 * LDotN*VDotN)* F;
+	return 0.25 * D * G * F;
 }
 
 //unreal cloth brdf
@@ -134,8 +134,8 @@ float3 UnrealClothSpeculerBRDF(float3 fuzzColor, float cloth, float3 speculerCol
 
 	//calculate cloth
 	float d = (1 - alpha2)*NDotH*NDotH + alpha2;
-	float D2 = rcp(UNITY_PI*(1 + 4 * alpha2))*(1 + 4 * alpha2*alpha2 / (d*d));
-	float Vis2 = rcp(4 * (LDotN + VDotN - LDotN * VDotN));
+	float D2 = rcp(UNITY_PI*(1 + 4 * alpha2))*(1 + 4 * alpha2*alpha2 / (d*d + 0.001));
+	float Vis2 = rcp(4 * (LDotN + VDotN - LDotN * VDotN) + 0.001);
 	float3 Fc = Pow5(1 - VDotH);
 	float3 F2 = saturate(50.0*fuzzColor.g)*Fc + (1 - Fc)*fuzzColor;
 	float3 spec2 = (D2 * Vis2)* F2;
@@ -143,15 +143,16 @@ float3 UnrealClothSpeculerBRDF(float3 fuzzColor, float cloth, float3 speculerCol
 	return lerp(spec1, spec2, cloth);
 }
 
+//unreal enviroment brdf
 #ifndef PreIntegratedGF
-sampler2D		PreIntegratedGF;
+sampler2D		_PreIntegratedGF;
 float4 PreIntegratedGF_ST;
 #endif
 
 half3 UnrealEnviromentBRDF(half3 SpecularColor, half Roughness, half VDotN)
 {
 	// Importance sampled preintegrated G * F
-	float2 AB = tex2D(PreIntegratedGF, float2(VDotN, Roughness)).rg;
+	float2 AB = tex2D(_PreIntegratedGF, float2(VDotN, Roughness)).rg;
 
 	// Anything less than 2% is physically impossible and is instead considered to be shadowing 
 	float3 GF = SpecularColor * AB.x + saturate(50.0 * SpecularColor.g) * AB.y;
@@ -187,4 +188,15 @@ float3 OptimizingEnviromentBRDF(float3 speculerColor, float roughness, float NDo
 {
 	float tmp = 1 - max(roughness, VDotN);
 	return tmp * tmp*tmp + speculerColor;
+}
+
+//anisotropic ward brdf
+uniform float _AlphaX;
+uniform float _AlphaY;
+
+float3 WardBRDF(float3 speculerColor, float dotHTAlphaX, float dotHBAlphaY, float NDotH, float VDotH, float LDotN, float VDotN)
+{
+	return sqrt(max(0.0, 1 / (LDotN * VDotN+0.001)))
+		* exp(-2.0 * (dotHTAlphaX * dotHTAlphaX
+			+ dotHBAlphaY * dotHBAlphaY) / (1.0 + NDotH));
 }
