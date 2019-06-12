@@ -1,14 +1,15 @@
-﻿Shader "Custom/PBR"
+﻿Shader "Custom/UnityPBR_GAMMA"
 {
     Properties
     {
-        _MainTex ("Texture", 2D) = "white" {}
-		_SpeculerTex("SpeculerTex", 2D) = "white"{}
-		_NormalTex("NormalTex", 2D) = "bump"{}
-		_OcclusionTex("OcclusionTex", 2D) = "white"{}
-		_EmissionTex("EmissionTex", 2D) = "black"{}
+		[Gamma][NoScaleOffset]_MainTex ("Texture", 2D) = "white" {}
+		[Gamma][NoScaleOffset]_SpeculerTex("SpeculerTex", 2D) = "white"{}
+		[Toggle(ENABLE_SPECULER_GLOSSNESS)]_Use_Specular_Glossness("Use_Specular_Glossness", Float) = 1
+		[NoScaleOffset]_NormalTex("NormalTex", 2D) = "bump"{}
+		[NoScaleOffset]_OcclusionTex("OcclusionTex", 2D) = "white"{}
+		[NoScaleOffset]_EmissionTex("EmissionTex", 2D) = "black"{}
 
-		_SmoothnessScale("SmoothnessScale", Range(0,1)) = 1
+		_SmoothnessOrScale("SmoothnessOrScale", Range(0,1)) = 1
 		_EnviromentIntensity("EnviromentIntensity", Range(0,1)) = 1
     }
     SubShader
@@ -32,9 +33,8 @@
 
 			#include "BRDF.cginc"
 
-			#define _USESHADOW 1		//阴影启用宏
 			#define MIPMAP_STEP_COUNT 6
-			#define SPECULER_GLOSSNESS
+			#pragma shader_feature ENABLE_SPECULER_GLOSSNESS
 
             struct appdata
             {
@@ -49,9 +49,7 @@
                 float2 uv : TEXCOORD0;
 				float3 worldPos : TEXCOORD1;
 
-				#if _USESHADOW
 				UNITY_LIGHTING_COORDS(2,3)
-				#endif
 
 				float3 tangent : TEXCOORD4;
 				float3 binormal : TEXCOORD5;
@@ -71,7 +69,7 @@
 			sampler2D _EmissionTex;
 			float4 _EmissionTex_ST;
 
-			float _SmoothnessScale;
+			float _SmoothnessOrScale;
 			float _EnviromentIntensity;
 
             v2f vert (appdata v)
@@ -90,9 +88,7 @@
 				o.normal = tangentToWorld[2];
 				
 
-				#if _USESHADOW
 				UNITY_TRANSFER_LIGHTING(o, v.uv);
-				#endif
                 return o;
             }
 
@@ -100,13 +96,6 @@
             {
                 // sample the texture
 				float3 color = 0;
-				//#ifdef UNITY_COLORSPACE_GAMMA
-    //            fixed3 baseColor = GammaToLinearSpace(tex2D(_MainTex, i.uv));
-				//fixed3 speculerColor = GammaToLinearSpace(tex2D(_SpeculerTex, i.uv));
-				//fixed3 texNormal = UnpackNormal(tex2D(_NormalTex, i.uv));
-				//fixed3 occlusion = GammaToLinearSpace(tex2D(_OcclusionTex, i.uv));
-				//fixed3 emission = GammaToLinearSpace(tex2D(_EmissionTex, i.uv));
-				//#else
 				fixed3 baseColor = tex2D(_MainTex, i.uv);
 				fixed3 speculerColor = tex2D(_SpeculerTex, i.uv);
 				fixed3 texNormal = UnpackNormal(tex2D(_NormalTex, i.uv));
@@ -119,10 +108,8 @@
 				float3 lightDir = normalize(_WorldSpaceLightPos0.xyz);
 
 				//shadow
-				#if _USESHADOW
 				UNITY_LIGHT_ATTENUATION(atten, i, i.worldPos);
 				lightCol *= atten;
-				#endif
 
 				//surface data
 				float3 normal = normalize(texNormal.x*i.tangent + texNormal.y*i.binormal + texNormal.z*i.normal);
@@ -135,8 +122,8 @@
 				float VDotH = saturate(dot(viewDir, halfDir));
 				float NDotH = saturate(dot(normal, halfDir));
 
-				float glossness = _SmoothnessScale;
-				#ifdef SPECULER_GLOSSNESS
+				float glossness = _SmoothnessOrScale;
+				#ifdef ENABLE_SPECULER_GLOSSNESS
 				glossness *= tex2D(_SpeculerTex, i.uv).a;
 				#endif
 
@@ -173,9 +160,6 @@
 				color += IBLColor * enviromentBRDF* _EnviromentIntensity;
 
 				color += emission;
-				//#ifdef UNITY_COLORSPACE_GAMMA
-				//color = LinearToGammaSpace(color);
-				//#endif
                 return fixed4(color, 1);
             }
             ENDCG
@@ -185,7 +169,7 @@
 		{
 			Tags {"LightMode" = "FowardAdd"}
 
-			
+			//待做
 		}
 
 		Pass

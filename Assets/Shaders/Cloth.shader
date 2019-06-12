@@ -2,11 +2,11 @@
 {
     Properties
     {
-        _MainTex ("Texture", 2D) = "white" {}
-		_SpeculerTex("SpeculerTex", 2D) = "white"{}
-		_NormalTex("NormalTex", 2D) = "bump"{}
-		_OcclusionTex("OcclusionTex", 2D) = "white"{}
-		_EmissionTex("EmissionTex", 2D) = "black"{}
+        [Gamma][NoScaleOffset]_MainTex ("Texture", 2D) = "white" {}
+		[Gamma][NoScaleOffset]_SpeculerTex("SpeculerTex", 2D) = "white"{}
+		[NoScaleOffset]_NormalTex("NormalTex", 2D) = "bump"{}
+		[NoScaleOffset]_OcclusionTex("OcclusionTex", 2D) = "white"{}
+		[NoScaleOffset]_EmissionTex("EmissionTex", 2D) = "black"{}
 
 		_FuzzColor("FuzzColor", Color) = (1,1,1,1)
 		_Cloth("Cloth", Range(0,1))= 0
@@ -35,7 +35,6 @@
 
 			#include "BRDF.cginc"
 
-			#define _USESHADOW 1		//阴影启用宏
 			#define MIPMAP_STEP_COUNT 6
 			#define SPECULER_GLOSSNESS
 

@@ -2,11 +2,11 @@
 {
     Properties
     {
-        _MainTex ("Texture", 2D) = "white" {}
-		_SpeculerTex("SpeculerTex", 2D) = "white"{}
-		_NormalTex("NormalTex", 2D) = "bump"{}
-		_OcclusionTex("OcclusionTex", 2D) = "white"{}
-		_EmissionTex("EmissionTex", 2D) = "black"{}
+		[Gamma][NoScaleOffset]_MainTex ("Texture", 2D) = "white" {}
+		[Gamma][NoScaleOffset]_SpeculerTex("SpeculerTex", 2D) = "white"{}
+		[NoScaleOffset]_NormalTex("NormalTex", 2D) = "bump"{}
+		[NoScaleOffset]_OcclusionTex("OcclusionTex", 2D) = "white"{}
+		[NoScaleOffset]_EmissionTex("EmissionTex", 2D) = "black"{}
 
 		_PreIntegratedGF("PreIntegratedGF", 2D) = "white"{}
 
@@ -92,9 +92,7 @@
 				o.normal = tangentToWorld[2];
 				
 
-				#if _USESHADOW
 				UNITY_TRANSFER_LIGHTING(o, v.uv);
-				#endif
                 return o;
             }
 
@@ -121,10 +119,8 @@
 				float3 lightDir = normalize(_WorldSpaceLightPos0.xyz);
 
 				//shadow
-				#if _USESHADOW
 				UNITY_LIGHT_ATTENUATION(atten, i, i.worldPos);
 				lightCol *= atten;
-				#endif
 
 				//surface data
 				float3 normal = normalize(texNormal.x*i.tangent + texNormal.y*i.binormal + texNormal.z*i.normal);
