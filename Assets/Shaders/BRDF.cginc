@@ -15,20 +15,20 @@ float Pow5(float t)
 float3 DesineyDiffuseBRDF(float3 baseColor, float roughness, float LDotH, float LDotN, float VDotN)
 {
 	float FD90 = 0.5 + 2 * LDotH*LDotH*roughness;
-	return (1 + (FD90 - 1)*Pow5(1 - LDotN))*(1 + (FD90 - 1)*Pow5(1 - VDotN))*baseColor;
+	return (1 + (FD90 - 1)*Pow5(1 - LDotN))*(1 + (FD90 - 1)*Pow5(1 - VDotN))*baseColor*UNITY_INV_PI;
 }
 
-//disney speculer BRDF
-float3 DesineySpeculerBRDF(float3 speculerColor, float roughness, float NDotH, float VDotH, float LDotN, float VDotN)
+//disney Specular BRDF
+float3 DesineySpecularBRDF(float3 SpecularColor, float roughness, float NDotH, float VDotH, float LDotN, float VDotN)
 {
-	//calculate D; desiney use two speculer lobes, here we use one // same to unreal
+	//calculate D; desiney use two Specular lobes, here we use one // same to unreal
 	float alpha = roughness * roughness;
 	float alpha2 = alpha * alpha;
 	float tmp = NDotH * NDotH*(alpha2 - 1) + 1;
 	float D = alpha * alpha / (UNITY_PI*tmp*tmp);
 
 	//calculate F
-	float F = speculerColor + (1 - speculerColor)*Pow5(1 - VDotH);
+	float F = SpecularColor + (1 - SpecularColor)*Pow5(1 - VDotH);
 
 	//calculate G
 	alpha = (0.5 + roughness * 0.5)*(0.5 + roughness * 0.5);
@@ -40,8 +40,15 @@ float3 DesineySpeculerBRDF(float3 speculerColor, float roughness, float NDotH, f
 	return D * G / (4 * LDotN*VDotN)* F;
 }
 
-//unity speculer brdf
-float3 UnitySpeculerBRDF(float3 speculerColor, float roughness, float NDotH, float VDotH, float LDotN, float VDotN)
+//unity diffuse brdf
+float3 UnityDiffuseBRDF(float3 baseColor, float roughness, float LDotH, float LDotN, float VDotN)
+{
+	float FD90 = 0.5 + 2 * LDotH*LDotH*roughness;
+	return (1 + (FD90 - 1)*Pow5(1 - LDotN))*(1 + (FD90 - 1)*Pow5(1 - VDotN))*baseColor;
+}
+
+//unity Specular brdf
+float3 UnitySpecularBRDF(float3 SpecularColor, float roughness, float NDotH, float VDotH, float LDotN, float VDotN)
 {
 	//claculate D
 	float alpha = roughness * roughness;
@@ -51,7 +58,7 @@ float3 UnitySpeculerBRDF(float3 speculerColor, float roughness, float NDotH, flo
 	float D = alpha2 *UNITY_INV_PI / (tmp*tmp+1e-7f);
 
 	//calculate F
-	float F = speculerColor + (1 - speculerColor)*Pow5(1 - VDotH);
+	float F = SpecularColor + (1 - SpecularColor)*Pow5(1 - VDotH);
 
 	//culate G
 	float GV = VDotN * sqrt(VDotN*VDotN*(1 - alpha2) + alpha2);
@@ -66,7 +73,7 @@ float3 UnitySpeculerBRDF(float3 speculerColor, float roughness, float NDotH, flo
 	return specularTerm * F;
 }
 
-float3 UnityEnviromentBRDF(float3 speculerColor, float roughness, float VDotN)
+float3 UnityEnviromentBRDF(float3 SpecularColor, float roughness, float VDotN)
 {
 	float surfaceReduction = 1.0 / (Pow4(roughness) + 1.0);
 #ifdef UNITY_COLORSPACE_GAMMA
@@ -74,10 +81,10 @@ float3 UnityEnviromentBRDF(float3 speculerColor, float roughness, float VDotN)
 #else
 	surfaceReduction = = 1.0 / (Pow4(roughness) + 1.0);           // fade \in [0.5;1]
 #endif
-	float oneMinusReflectivity = 1 - SpecularStrength(speculerColor);
+	float oneMinusReflectivity = 1 - SpecularStrength(SpecularColor);
 	half grazingTerm = saturate(1 - roughness + (1 - oneMinusReflectivity));
 	half t = Pow4(1 - VDotN);
-	half3 fresnel = lerp(speculerColor, grazingTerm, t);
+	half3 fresnel = lerp(SpecularColor, grazingTerm, t);
 
 	return surfaceReduction * fresnel;
 }
@@ -89,8 +96,8 @@ float3 UnrealDiffuseBRDF(float3 baseColor)
 	return baseColor * UNITY_INV_PI;
 }
 
-//unreal speculer brdf
-float3 UnrealSpeculerBRDF(float3 speculerColor, float roughness, float NDotH, float VDotH, float LDotN, float VDotN)
+//unreal Specular brdf
+float3 UnrealSpecularBRDF(float3 SpecularColor, float roughness, float NDotH, float VDotH, float LDotN, float VDotN)
 {
 	//claculate D
 	float alpha = roughness * roughness;
@@ -100,7 +107,7 @@ float3 UnrealSpeculerBRDF(float3 speculerColor, float roughness, float NDotH, fl
 
 	//calculate F
 	tmp = (-5.55473*VDotH - 6.98316)*VDotH;
-	float F = speculerColor + (1 - speculerColor)*pow(2, tmp);
+	float F = SpecularColor + (1 - SpecularColor)*pow(2, tmp);
 
 	//culate G
 	float k = (roughness + 1)*(roughness + 1) / 8;
@@ -112,7 +119,7 @@ float3 UnrealSpeculerBRDF(float3 speculerColor, float roughness, float NDotH, fl
 }
 
 //unreal cloth brdf
-float3 UnrealClothSpeculerBRDF(float3 fuzzColor, float cloth, float3 speculerColor, float roughness, float NDotH, float VDotH, float LDotN, float VDotN)
+float3 UnrealClothSpecularBRDF(float3 fuzzColor, float cloth, float3 SpecularColor, float roughness, float NDotH, float VDotH, float LDotN, float VDotN)
 {
 	//claculate D
 	float alpha = roughness * roughness;
@@ -122,7 +129,7 @@ float3 UnrealClothSpeculerBRDF(float3 fuzzColor, float cloth, float3 speculerCol
 
 	//calculate F
 	tmp = (-5.55473*VDotH - 6.98316)*VDotH;
-	float3 F = speculerColor + (1 - speculerColor)*pow(2, tmp);
+	float3 F = SpecularColor + (1 - SpecularColor)*pow(2, tmp);
 
 	//culate G
 	float k = (roughness + 1)*(roughness + 1) / 8;
@@ -144,10 +151,8 @@ float3 UnrealClothSpeculerBRDF(float3 fuzzColor, float cloth, float3 speculerCol
 }
 
 //unreal enviroment brdf
-#ifndef PreIntegratedGF
 sampler2D		_PreIntegratedGF;
-float4 PreIntegratedGF_ST;
-#endif
+float4 _PreIntegratedGF_ST;
 
 half3 UnrealEnviromentBRDF(half3 SpecularColor, half Roughness, half VDotN)
 {
@@ -177,24 +182,21 @@ half3 UnrealEnviromentBRDFApprox(half3 SpecularColor, half Roughness, half VDotN
 }
 
 //Optimizing BRDF for morbile, reference:https://community.arm.com/developer/tools-software/graphics/b/blog/posts/moving-mobile-graphics#siggraph2015
-float3 OptimizingBRDF(float3 speculerColor, float roughness, float NDotH, float VDotH, float LDotN, float VDotN)
+float3 OptimizedSpecularBRDF(float3 SpecularColor, float roughness, float NDotH, float VDotH, float LDotN, float VDotN)
 {
 	float roughness4 = roughness * roughness*roughness*roughness;
 	float tmp = NDotH*NDotH*(roughness4 - 1) + 1;
-	return roughness4 / (4 * UNITY_PI*tmp*tmp*VDotH*VDotH*(roughness + 0.5))*speculerColor;
+	return roughness4 / (4 * UNITY_PI*tmp*tmp*VDotH*VDotH*(roughness + 0.5)+0.001)*SpecularColor;
 }
 
-float3 OptimizingEnviromentBRDF(float3 speculerColor, float roughness, float NDotH, float VDotH, float LDotN, float VDotN)
+float3 OptimizedEnviromentBRDF(float3 SpecularColor, float roughness, float VDotN)
 {
 	float tmp = 1 - max(roughness, VDotN);
-	return tmp * tmp*tmp + speculerColor;
+	return tmp * tmp*tmp + SpecularColor;
 }
 
 //anisotropic ward brdf
-uniform float _AlphaX;
-uniform float _AlphaY;
-
-float3 WardBRDF(float3 speculerColor, float dotHTAlphaX, float dotHBAlphaY, float NDotH, float VDotH, float LDotN, float VDotN)
+float3 WardBRDF(float3 SpecularColor, float dotHTAlphaX, float dotHBAlphaY, float NDotH, float VDotH, float LDotN, float VDotN)
 {
 	return sqrt(max(0.0, 1 / (LDotN * VDotN+0.001)))
 		* exp(-2.0 * (dotHTAlphaX * dotHTAlphaX

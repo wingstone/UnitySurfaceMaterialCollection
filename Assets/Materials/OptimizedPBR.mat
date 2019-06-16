@@ -7,8 +7,8 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: SwordMat_self
-  m_Shader: {fileID: 4800000, guid: 85431361e2e5f704984dfca321e59733, type: 3}
+  m_Name: OptimizedPBR
+  m_Shader: {fileID: 4800000, guid: 22cb053a175e04649a2e20ca6b4887c6, type: 3}
   m_ShaderKeywords: ENABLE_SPECULAR_GLOSSNESS ENABLE_SPECULER_GLOSSNESS ENABLE_Specular_GLOSSNESS
     _EMISSION _NORMALMAP _SPECGLOSSMAP
   m_LightmapFlags: 1
