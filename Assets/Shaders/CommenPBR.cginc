@@ -31,7 +31,7 @@ struct SurfaceTexData
 	fixed3 baseColor;
 	fixed3 specularColor;
 	fixed3 texNormal;
-	fixed3 occlusion;
+	fixed occlusion;
 	fixed3 emission;
 	float roughness;
 };
@@ -96,13 +96,13 @@ SurfaceTexData GetSurfaceTexData(half2 uv)
 	o.baseColor = GammaToLinearSpace(tex2D(_MainTex, uv));
 	o.specularColor = GammaToLinearSpace(tex2D(_SpecularTex, uv));
 	o.texNormal = UnpackNormal(tex2D(_NormalTex, uv));
-	o.occlusion = tex2D(_OcclusionTex, uv);
+	o.occlusion = tex2D(_OcclusionTex, uv).r;
 	o.emission = tex2D(_EmissionTex, uv);
 #else
 	o.baseColor = tex2D(_MainTex, uv);
 	o.specularColor = tex2D(_SpecularTex, uv);
 	o.texNormal = UnpackNormal(tex2D(_NormalTex, uv));
-	o.occlusion = tex2D(_OcclusionTex, uv);
+	o.occlusion = tex2D(_OcclusionTex, uv).r;
 	o.emission = tex2D(_EmissionTex, uv);
 #endif
 
@@ -147,7 +147,22 @@ half3 GetIBLColor(SurfaceTexData surfaceTexData, SurfaceOtherData surfaceOtherDa
 	IBLColor = DecodeHDR(rgbm, unity_SpecCube0_HDR)*surfaceTexData.occlusion;
 #endif
 
-	return IBLColor;
+#ifdef UNITY_COLORSPACE_GAMMA
+	return GammaToLinearSpace(IBLColor);
+#else
+	return IBLColor*surfaceTexData.occlusion;
+#endif
+}
+
+half3 GetEnviromentColor(half3 normal)
+{
+	half3 col = SHEvalLinearL0L1(half4(normal, 1));
+	col += SHEvalLinearL2(half4(normal, 1));
+#ifdef UNITY_COLORSPACE_GAMMA
+	return GammaToLinearSpace(col);
+#else
+	return col;
+#endif
 }
 
 fixed4 Unrealfrag(v2f i) : SV_Target
@@ -170,7 +185,7 @@ fixed4 Unrealfrag(v2f i) : SV_Target
 
 
 	//indirect light
-	color += ShadeSH9(half4(surfaceOtherData.normal, 1))* surfaceTexData.baseColor* surfaceTexData.occlusion;
+	color += GetEnviromentColor(surfaceOtherData.normal)* surfaceTexData.baseColor* surfaceTexData.occlusion;
 
 	//diffuse data
 	float3 diffuseBRDF = UnrealDiffuseBRDF(surfaceTexData.baseColor);
@@ -217,7 +232,7 @@ fixed4 UnrealClothfrag(v2f i) : SV_Target
 
 
 	//indirect light
-	color += ShadeSH9(half4(surfaceOtherData.normal, 1))* surfaceTexData.baseColor* surfaceTexData.occlusion;
+	color += GetEnviromentColor(surfaceOtherData.normal)* surfaceTexData.baseColor* surfaceTexData.occlusion;
 
 	//diffuse data
 	float3 diffuseBRDF = UnrealDiffuseBRDF(surfaceTexData.baseColor);
@@ -264,7 +279,7 @@ fixed4 Optimizedfrag(v2f i) : SV_Target
 
 
 	//indirect light
-	color += ShadeSH9(half4(surfaceOtherData.normal, 1))* surfaceTexData.baseColor* surfaceTexData.occlusion;
+	color += GetEnviromentColor(surfaceOtherData.normal)* surfaceTexData.baseColor* surfaceTexData.occlusion;
 
 	//diffuse data
 	float3 diffuseBRDF = DesineyDiffuseBRDF(surfaceTexData.baseColor, surfaceTexData.roughness, VDotH, LDotN, VDotN);
@@ -297,7 +312,7 @@ fixed4 Unityfrag(v2f i) : SV_Target
 	surfaceTexData.baseColor = tex2D(_MainTex, i.uv);
 	surfaceTexData.specularColor = tex2D(_SpecularTex, i.uv);
 	surfaceTexData.texNormal = UnpackNormal(tex2D(_NormalTex, i.uv));
-	surfaceTexData.occlusion = tex2D(_OcclusionTex, i.uv);
+	surfaceTexData.occlusion = tex2D(_OcclusionTex, i.uv).r;
 	surfaceTexData.emission = tex2D(_EmissionTex, i.uv);
 	float glossness = _SmoothnessScale;
 #ifdef ENABLE_SPECULAR_GLOSSNESS
@@ -331,9 +346,16 @@ fixed4 Unityfrag(v2f i) : SV_Target
 	color += LDotN * surfaceOtherData.lightCol*SpecularBRDF;
 
 	//IBL reflection
-	half3 IBLColor = GetIBLColor(surfaceTexData, surfaceOtherData);
+	half3 IBLColor;
+#ifdef _GLOSSYREFLECTIONS_OFF
+	IBLColor = unity_IndirectSpecColor.rgb;
+#else
+	half mip = surfaceTexData.roughness * (1.7 - 0.7*surfaceTexData.roughness)*UNITY_SPECCUBE_LOD_STEPS;
+	half4 rgbm = UNITY_SAMPLE_TEXCUBE_LOD(unity_SpecCube0, surfaceOtherData.reflectDir, mip);
+	IBLColor = DecodeHDR(rgbm, unity_SpecCube0_HDR)*surfaceTexData.occlusion;
+#endif
 	float3 enviromentBRDF = UnityEnviromentBRDF(surfaceTexData.specularColor, surfaceTexData.roughness, VDotN);
-	color += IBLColor * enviromentBRDF* _EnviromentIntensity;
+	color += IBLColor * enviromentBRDF* _EnviromentIntensity* surfaceTexData.occlusion;
 
 	color += surfaceTexData.emission;
 	return fixed4(color, 1);
@@ -359,7 +381,7 @@ fixed4 Anisotropicfrag(v2f i) : SV_Target
 
 
 	//indirect light
-	color += ShadeSH9(half4(surfaceOtherData.normal, 1))* surfaceTexData.baseColor* surfaceTexData.occlusion;
+	color += GetEnviromentColor(surfaceOtherData.normal)* surfaceTexData.baseColor* surfaceTexData.occlusion;
 
 	//diffuse data
 	float3 diffuseBRDF = DesineyDiffuseBRDF(surfaceTexData.baseColor, surfaceTexData.roughness, VDotH, LDotN, VDotN);

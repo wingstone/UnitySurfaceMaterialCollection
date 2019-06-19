@@ -9,14 +9,17 @@ public class test : MonoBehaviour
     {
         Camera came = GetComponent<Camera>();
 
-        Debug.Log("==========");
-        Debug.Log(came.worldToCameraMatrix);
+        //Debug.Log("==========");
+        //Debug.Log(came.worldToCameraMatrix);
 
-        Debug.Log("==========");
-        Debug.Log(came.projectionMatrix);
+        //Debug.Log("==========");
+        //Debug.Log(came.projectionMatrix);
 
         Debug.Log("==========");
         Debug.Log(came.projectionMatrix * came.worldToCameraMatrix);
+
+        Debug.Log("==========");
+        Debug.Log(GL.GetGPUProjectionMatrix(came.projectionMatrix, true) * came.worldToCameraMatrix);
     }
 
     // Update is called once per frame
