@@ -1,3 +1,5 @@
+#ifndef _BRDF_
+#define _BRDF_
 //note: LDotH = VDotH;
 
 float Pow4(float t)
@@ -196,9 +198,26 @@ float3 OptimizedEnviromentBRDF(float3 SpecularColor, float roughness, float VDot
 }
 
 //anisotropic ward brdf
-float3 WardBRDF(float3 SpecularColor, float dotHTAlphaX, float dotHBAlphaY, float NDotH, float VDotH, float LDotN, float VDotN)
+float3 WardSpecularBRDF(float3 SpecularColor, float dotHTAlphaX, float dotHBAlphaY, float NDotH, float VDotH, float LDotN, float VDotN)
 {
 	return sqrt(max(0.0, 1 / (LDotN * VDotN+0.001)))
 		* exp(-2.0 * (dotHTAlphaX * dotHTAlphaX
 			+ dotHBAlphaY * dotHBAlphaY) / (1.0 + NDotH));
 }
+
+half StrandSpecular(half TDotH, half specPower)
+{
+	half sinTH = sqrt(1 - TDotH* TDotH);
+	half dirAtten = smoothstep(-1, 0, TDotH);
+	return dirAtten * pow(sinTH, specPower);
+}
+
+half3 HairSpecularBRDF(half TDotH1, half3 specCol1, half specPower1, half specFactor1,
+	half TDotH2, half3 specCol2, half specPower2, half specFactor2)
+{
+	half3 BRDF1 = StrandSpecular(TDotH1, specPower1) * specCol1 * specFactor1;
+	half3 BRDF2 = StrandSpecular(TDotH2, specPower2) * specCol2 * specFactor2;
+	return BRDF1 + BRDF2;
+}
+
+#endif
