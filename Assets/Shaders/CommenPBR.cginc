@@ -43,6 +43,7 @@ float4 _EmissionTex_ST;
 
 float _SmoothnessScale;
 float _EnviromentIntensity;
+float _EnviromentSpecularIntensity;
 
 float3 _FuzzColor;
 float _Cloth;
@@ -240,7 +241,7 @@ fixed4 Optimizedfrag(v2f i) : SV_Target
 
 
 	//indirect light
-	color += GetEnviromentColor(surfaceOtherData.normal)* surfaceTexData.baseColor* surfaceTexData.occlusion;
+	color += ShadeSHPerPixel(surfaceOtherData.normal, half3(0,0,0), i.worldPos)* surfaceTexData.baseColor* surfaceTexData.occlusion * _EnviromentIntensity;
 
 	//diffuse data
 	float3 diffuseBRDF = DesineyDiffuseBRDF(surfaceTexData.baseColor, surfaceTexData.roughness, VDotH, LDotN, VDotN);
@@ -253,7 +254,7 @@ fixed4 Optimizedfrag(v2f i) : SV_Target
 	//IBL reflection
 	half3 IBLColor = GetIBLColor(surfaceTexData, surfaceOtherData);
 	float3 enviromentBRDF = OptimizedEnviromentBRDF(surfaceTexData.specularColor, surfaceTexData.roughness, VDotN);
-	color += IBLColor * enviromentBRDF* _EnviromentIntensity;
+	color += IBLColor * enviromentBRDF* _EnviromentSpecularIntensity;
 
 	color += surfaceTexData.emission;
 

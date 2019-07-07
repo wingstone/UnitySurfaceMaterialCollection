@@ -1,51 +1,44 @@
-﻿Shader "Custom/Hair"
+﻿Shader "Custom/Toon"
 {
 	Properties
 	{
-		[Header(Main Control Parameters)]
 		[Gamma][NoScaleOffset]_MainTex("Texture", 2D) = "white" {}
+		[Toggle(ENABLE_SPECULAR_GLOSSNESS)]_Use_Specular_Glossness("Use_Specular_Glossness", Int) = 1
+		[Gamma][NoScaleOffset]_SpecularTex("SpecularTex", 2D) = "white"{}
 		[NoScaleOffset]_NormalTex("NormalTex", 2D) = "bump"{}
-		[NoScaleOffset]_TangentShiftTex("TangentShiftTex", 2D) = "gray"{}
+		[NoScaleOffset]_OcclusionTex("OcclusionTex", 2D) = "white"{}
+		[NoScaleOffset]_EmissionTex("EmissionTex", 2D) = "black"{}
 
-		[Header(Specular1 Control Parameters)]
-		_SpecularCol1("Specular Color1", Color) = (1,1,1,1)
-		[PowerSlider(3.0)]_SpecularPower1("Specular Power1", Range(1, 300)) = 25
-		_SpecularIntensity1("Specular Intensity1", Range(0, 1)) = 1
-		_SpecularShiftScale1("Specular Shift Scale1", Range(0, 1)) = 0.5
-		_SpecularShiftMove1("Specular Shift Move1", Range(0, 1)) = 0
-
-		[Header(Specular2 Control Parameters)]
-		_SpecularCol2("Specular Color2", Color) = (1,1,1,1)
-		[PowerSlider(3.0)]_SpecularPower2("Specular Power2", Range(1, 300)) = 25
-		_SpecularIntensity2("Specular Intensity2", Range(0, 1)) = 1
-		_SpecularShiftScale2("Specular Shift Scale2", Range(0, 1)) = 0.5
-		_SpecularShiftMove2("Specular Shift Move2", Range(0, 1)) = 0
-			
-		[Header(Other Control Parameters)]
-		_AlphaRef("AlphaRef", Range(0, 1)) = 0.6
-		_EnviromentSmoothness("EnviromentSmoothness", Range(0,1)) = 1
+		_SmoothnessScale("SmoothnessScale", Range(0,1)) = 1
 		_EnviromentIntensity("EnviromentIntensity", Range(0,1)) = 1
+		_EnviromentSpecularIntensity("EnviromentIntensity", Range(0,1)) = 1
 	}
 		SubShader
 		{
-			Tags { "RenderType" = "Transparent" "Queue" = "Transparent"}
+			Tags { "RenderType" = "Opaque" "Queue" = "Geometry"}
 			LOD 100
 
 			Pass
 			{
 				Tags {"LightMode" = "ForwardBase"}
-				Blend SrcAlpha OneMinusSrcAlpha
-
 
 				CGPROGRAM
-				#define ALPATEST
 				#pragma vertex vert
-				#pragma fragment Hairfrag
+				#pragma fragment frag
 
 				#pragma multi_compile_fwdbase		//声明光照与阴影相关的宏
-				#include "Hair.cginc"
+				#pragma shader_feature ENABLE_SPECULAR_GLOSSNESS
+				#pragma shader_feature ENABLE_PREINTEGRATED
+				#include "Toon.cginc"
 
 				ENDCG
+			}
+
+			Pass
+			{
+				Tags {"LightMode" = "FowardAdd"}
+
+
 			}
 
 			Pass

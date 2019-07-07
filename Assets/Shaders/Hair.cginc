@@ -115,7 +115,7 @@ fixed4 Hairfrag(v2f i) : SV_Target
 	half roughness = 1 - _EnviromentSmoothness;
 
 #ifdef ALPHATEST
-	clip(alpha - _AlphaRef);
+	//clip(alpha - _AlphaRef);
 #endif
 
 	SurfaceOtherData surfaceOtherData = GetSurfaceOtherData(i, normal);
@@ -143,12 +143,12 @@ fixed4 Hairfrag(v2f i) : SV_Target
 
 	//diffuse data
 	float3 diffuseBRDF = DesineyDiffuseBRDF(baseColor, roughness, VDotH, LDotN, VDotN);
-	color += LDotN * surfaceOtherData.lightCol*diffuseBRDF;
+	//color += LDotN * surfaceOtherData.lightCol*diffuseBRDF;
 
 	//Specular data
 	float3 SpecularBRDF = HairSpecularBRDF(TDotH1, _SpecularCol1, _SpecularPower1, _SpecularIntensity1,
 		TDotH2, _SpecularCol2, _SpecularPower2, _SpecularIntensity2);
-	color += LDotN * surfaceOtherData.lightCol*SpecularBRDF;
+	//color += LDotN * surfaceOtherData.lightCol*SpecularBRDF;
 
 	#ifdef UNITY_COLORSPACE_GAMMA
 	color = LinearToGammaSpace(color);

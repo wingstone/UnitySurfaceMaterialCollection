@@ -11,6 +11,7 @@
 
 		_SmoothnessScale("SmoothnessScale", Range(0,1)) = 1
 		_EnviromentIntensity("EnviromentIntensity", Range(0,1)) = 1
+		_EnviromentSpecularIntensity("EnviromentIntensity", Range(0,1)) = 1
 	}
 		SubShader
 		{
