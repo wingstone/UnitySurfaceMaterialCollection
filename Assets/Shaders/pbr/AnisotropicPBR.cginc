@@ -56,7 +56,7 @@ fixed4 Anisotropicfrag(v2f i, half vFace : FACE) : SV_Target
 	//IBL reflection
 	half3 IBLColor = GetIBLColor(surfaceTexData, surfaceOtherData);
 	float3 enviromentBRDF = CommenEnviromentBRDF(surfaceTexData.specularColor, surfaceTexData.roughness, VDotN);
-	color += IBLColor * enviromentBRDF* _EnviromentIntensity;
+	color += IBLColor * enviromentBRDF* _EnviromentSpecularIntensity;
 
 	color += surfaceTexData.emission;
 

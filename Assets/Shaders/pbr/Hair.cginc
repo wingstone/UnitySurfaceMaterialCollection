@@ -7,13 +7,13 @@
 
 #include "BRDF.cginc"
 #include "CommenVertex.cginc"
+#include "CommenSurface.cginc"
+#include "CommenEnviroment.cginc"
 
 sampler2D _MainTex;
 float4 _MainTex_ST;
 sampler2D _TangentShiftTex;
 float4 _ShiftTangentTex_ST;
-sampler2D _NormalTex;
-float4 _NormalTex_ST;
 
 half4 _SpecularCol1;
 half _SpecularPower1;
@@ -33,75 +33,13 @@ float _EnviromentIntensity;
 
 half _AlphaRef;
 
-struct SurfaceOtherData
-{
-	fixed3 lightCol;
-	float3 lightDir;
-	float3 normal;
-	float3 tangent;
-	float3 binormal;
-	float3 viewDir;
-	float3 reflectDir;
-	float3 halfDir;
-};
-
-
-SurfaceOtherData GetSurfaceOtherData(v2f i, float3 texNormal)
-{
-	SurfaceOtherData o;
-#ifdef UNITY_COLORSPACE_GAMMA
-	o.lightCol = GammaToLinearSpace(_LightColor0.rgb);
-#else
-	o.lightCol = _LightColor0.rgb;
-#endif
-	o.lightDir = normalize(_WorldSpaceLightPos0.xyz);
-	o.normal = normalize(texNormal.x*i.tangent + texNormal.y*i.binormal + texNormal.z*i.normal);
-	o.tangent = normalize(i.tangent);
-	o.binormal = normalize(cross(o.normal, o.tangent));
-	o.tangent = cross(o.binormal, o.normal);
-	o.viewDir = normalize(_WorldSpaceCameraPos - i.worldPos);
-	o.reflectDir = reflect(-o.viewDir, o.normal);
-	o.halfDir = normalize(o.viewDir + o.lightDir);
-	return o;
-}
-
-half3 GetIBLColor( half roughness, half occlusion, SurfaceOtherData surfaceOtherData)
-{
-	half3 IBLColor;
-#ifdef _GLOSSYREFLECTIONS_OFF
-	IBLColor = unity_IndirectSpecColor.rgb;
-
-#else
-	half mip = roughness * (1.7 - 0.7*roughness)*UNITY_SPECCUBE_LOD_STEPS;
-	half4 rgbm = UNITY_SAMPLE_TEXCUBE_LOD(unity_SpecCube0, surfaceOtherData.reflectDir, mip);
-	IBLColor = DecodeHDR(rgbm, unity_SpecCube0_HDR)*occlusion;
-#endif
-
-#ifdef UNITY_COLORSPACE_GAMMA
-	return GammaToLinearSpace(IBLColor);
-#else
-	return IBLColor*occlusion;
-#endif
-}
-
-half3 GetEnviromentColor(half3 normal)
-{
-	half3 col = SHEvalLinearL0L1(half4(normal, 1));
-	col += SHEvalLinearL2(half4(normal, 1));
-#ifdef UNITY_COLORSPACE_GAMMA
-	return GammaToLinearSpace(col);
-#else
-	return col;
-#endif
-}
-
 half3 ShiftTangent(half3 T, half3 N, half shift)
 {
 	half3 shiftT =  T + N * shift;
 	return normalize(shiftT);
 }
 
-fixed4 Hairfrag(v2f i) : SV_Target
+fixed4 Hairfrag(v2f i, half vFace : VFACE) : SV_Target
 {
 	// sample the texture
 	float3 color = 0;
@@ -115,10 +53,10 @@ fixed4 Hairfrag(v2f i) : SV_Target
 	half roughness = 1 - _EnviromentSmoothness;
 
 #ifdef ALPHATEST
-	//clip(alpha - _AlphaRef);
+	clip(alpha - _AlphaRef);
 #endif
 
-	SurfaceOtherData surfaceOtherData = GetSurfaceOtherData(i, normal);
+	SurfaceOtherData surfaceOtherData = GetSurfaceOtherData(i, normal, vFace);
 
 	//shadow
 	UNITY_LIGHT_ATTENUATION(atten, i, i.worldPos);
@@ -137,18 +75,19 @@ fixed4 Hairfrag(v2f i) : SV_Target
 	half3 T2 = ShiftTangent(surfaceOtherData.binormal, surfaceOtherData.normal, texShift2);
 	half TDotH2 = dot(T2, surfaceOtherData.halfDir);
 
-
 	//indirect light
-	color += GetEnviromentColor(surfaceOtherData.normal)* baseColor* occlusion;
+#if UNITY_SHOULD_SAMPLE_SH
+	color += ShadeSHPerPixel(surfaceOtherData.normal, i.vLight, i.worldPos)* baseColor* occlusion * _EnviromentIntensity;
+#endif
 
 	//diffuse data
 	float3 diffuseBRDF = DesineyDiffuseBRDF(baseColor, roughness, VDotH, LDotN, VDotN);
-	//color += LDotN * surfaceOtherData.lightCol*diffuseBRDF;
+	color += LDotN * surfaceOtherData.lightCol*diffuseBRDF;
 
 	//Specular data
 	float3 SpecularBRDF = HairSpecularBRDF(TDotH1, _SpecularCol1, _SpecularPower1, _SpecularIntensity1,
 		TDotH2, _SpecularCol2, _SpecularPower2, _SpecularIntensity2);
-	//color += LDotN * surfaceOtherData.lightCol*SpecularBRDF;
+	color += LDotN * surfaceOtherData.lightCol*SpecularBRDF;
 
 	#ifdef UNITY_COLORSPACE_GAMMA
 	color = LinearToGammaSpace(color);

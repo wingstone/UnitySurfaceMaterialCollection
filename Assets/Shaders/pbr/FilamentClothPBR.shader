@@ -14,8 +14,8 @@
 		_Cloth("Cloth", Range(0,1)) = 0
 
 		_SpecularFactor("SpecularFactor", Range(0,5)) = 1
-		[HiddenInInspector]_EnviromentIntensity("EnviromentIntensity", Range(0,1)) = 1
-		[HiddenInInspector]_EnviromentSpecularIntensity("EnviromentIntensity", Range(0,1)) = 1
+		[HideInInspector]_EnviromentIntensity("EnviromentIntensity", Range(0,1)) = 1
+		[HideInInspector]_EnviromentSpecularIntensity("EnviromentIntensity", Range(0,1)) = 1
     }
     SubShader
     {

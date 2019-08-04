@@ -35,10 +35,50 @@
 			{
 				Tags {"LightMode" = "ForwardBase"}
 				Blend SrcAlpha OneMinusSrcAlpha
+				Cull Off
+				ZWrite On
+				ZTest LEqual
+
+				CGPROGRAM
+				#define ALPHATEST
+				#pragma vertex vert
+				#pragma fragment Hairfrag
+
+				#pragma multi_compile_fwdbase		//声明光照与阴影相关的宏
+				#include "Hair.cginc"
+
+				ENDCG
+			}
+
+			Pass
+			{
+				Tags {"LightMode" = "ForwardBase"}
+				Blend SrcAlpha OneMinusSrcAlpha
+				Cull Front
+				ZWrite Off
+				ZTest LEqual
 
 
 				CGPROGRAM
-				#define ALPATEST
+				#pragma vertex vert
+				#pragma fragment Hairfrag
+
+				#pragma multi_compile_fwdbase		//声明光照与阴影相关的宏
+				#include "Hair.cginc"
+
+				ENDCG
+			}
+
+			Pass
+			{
+				Tags {"LightMode" = "ForwardBase"}
+				Blend SrcAlpha OneMinusSrcAlpha
+				Cull Back
+				ZWrite Off
+				ZTest LEqual
+
+
+				CGPROGRAM
 				#pragma vertex vert
 				#pragma fragment Hairfrag
 

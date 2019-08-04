@@ -13,8 +13,8 @@
 		_AlphaY("Roughness orthogonal to Brush Direction", Range(0, 1)) = 1.0
 
 		_SpecularFactor("SpecularFactor", Range(0,5)) = 1
-		[HiddenInInspector]_EnviromentIntensity("EnviromentIntensity", Range(0,1)) = 1
-		[HiddenInInspector]_EnviromentSpecularIntensity("EnviromentIntensity", Range(0,1)) = 1
+		[HideInInspector]_EnviromentIntensity("EnviromentIntensity", Range(0,1)) = 1
+		[HideInInspector]_EnviromentSpecularIntensity("EnviromentSpecularIntensity", Range(0,1)) = 1
     }
     SubShader
     {

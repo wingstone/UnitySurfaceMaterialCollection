@@ -123,7 +123,7 @@ float3 UnrealClothSpecularBRDF(float3 fuzzColor, float cloth, float3 SpecularCol
 	//calculate cloth
 	float d = (1 - alpha2)*NDotH*NDotH + alpha2;
 	float D2 = rcp(UNITY_PI*(1 + 4 * alpha2))*(1 + 4 * alpha2*alpha2 / max(d*d, 1e-7));
-	float Vis2 = rcp(4 * (LDotN + VDotN - LDotN * VDotN) + 0.001);
+	float Vis2 = rcp(4 * (LDotN + VDotN - LDotN * VDotN));
 	float3 Fc = Pow5(1 - VDotH);
 	float3 F2 = saturate(50.0*fuzzColor.g)*Fc + (1 - Fc)*fuzzColor;
 	float3 spec2 = (D2 * Vis2)* F2;
@@ -210,14 +210,14 @@ float D_Ashikhmin(float roughness, float NoH) {
 	float cos2h = NoH * NoH;
 	float sin2h = max(1.0 - cos2h, 0.0078125); // 2^(-14/2), so sin2h^2 > 0 in fp16
 	float sin4h = sin2h * sin2h;
-	float cot2 = -cos2h / (a2 * sin2h);
+	float cot2 = -cos2h / max(a2 * sin2h, 1e-7);
 	return 1.0 / (UNITY_PI * (4.0 * a2 + 1.0) * sin4h) * (4.0 * exp(cot2) + sin4h);
 }
 
 float D_Charlie(float roughness, float NoH) {
 	// Estevez and Kulla 2017, "Production Friendly Microfacet Sheen BRDF"
-	float a = roughness ;
-	float invAlpha = 1.0 / a;
+	float a = roughness * roughness;
+	float invAlpha = 1.0 / max(a, 1e-7);
 	float cos2h = NoH * NoH;
 	float sin2h = max(1.0 - cos2h, 0.0078125); // 2^(-14/2), so sin2h^2 > 0 in fp16
 	return (2.0 + invAlpha) * pow(sin2h, invAlpha * 0.5) / (2.0 * UNITY_PI);

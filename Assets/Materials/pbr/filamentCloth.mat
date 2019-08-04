@@ -7,8 +7,8 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Cloth
-  m_Shader: {fileID: 4800000, guid: 8211e33002d907543b412c73d2f0c123, type: 3}
+  m_Name: filamentCloth
+  m_Shader: {fileID: 4800000, guid: 8da77b0b9f63553488143ea1a5a504cb, type: 3}
   m_ShaderKeywords: 
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
@@ -67,14 +67,6 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
-    - _SpecularTex:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - _SpeculerTex:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
     m_Floats:
     - _BumpScale: 1
     - _Cloth: 1
@@ -91,17 +83,16 @@ Material:
     - _Mode: 0
     - _OcclusionStrength: 1
     - _Parallax: 0.02
-    - _SmoothnessScale: 1
     - _SmoothnessTextureChannel: 0
     - _SpecularFactor: 1
     - _SpecularHighlights: 1
     - _SrcBlend: 1
     - _UVSec: 0
-    - _Use_Specular_Glossness: 0
     - _ZWrite: 1
     m_Colors:
     - _Color: {r: 1, g: 1, b: 1, a: 1}
-    - _DiffuseColor: {r: 0.3207547, g: 0.3207547, b: 0.3207547, a: 1}
+    - _DiffuseColor: {r: 0.14150941, g: 0.13817193, b: 0.13817193, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
-    - _FuzzColor: {r: 0, g: 1, b: 0.5803921, a: 1}
+    - _SheenColor: {r: 1, g: 0.053292975, b: 0, a: 0}
     - _SpecularColor: {r: 0, g: 0, b: 0, a: 1}
+    - _SubsurfaceColor: {r: 0.38679248, g: 0.22675411, b: 0.20981668, a: 0}

@@ -59,7 +59,7 @@ SurfaceOtherData GetSurfaceOtherData(v2f i, float3 texNormal, half vFace)
 #endif
 	o.lightDir = normalize(_WorldSpaceLightPos0.xyz);
 	o.normal = normalize(texNormal.x*i.tangent + texNormal.y*i.binormal + texNormal.z*i.normal);
-	//o.normal = lerp(-o.normal, o.normal, vFace);
+	o.normal = lerp(-o.normal, o.normal, step(0, vFace));
 	o.tangent = normalize(i.tangent);
 	o.binormal = normalize(cross(o.normal, o.tangent));
 	o.tangent = cross(o.binormal, o.normal);
