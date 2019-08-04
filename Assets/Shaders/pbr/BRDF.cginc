@@ -200,4 +200,64 @@ half3 HairSpecularBRDF(half TDotH1, half3 specCol1, half specPower1, half specFa
 	return BRDF1 + BRDF2;
 }
 
+
+//cloth model
+//https://google.github.io/filament/Filament.md.html#about
+float D_Ashikhmin(float roughness, float NoH) {
+	// Ashikhmin 2007, "Distribution-based BRDFs"
+	float a = roughness * roughness;
+	float a2 = a * a;
+	float cos2h = NoH * NoH;
+	float sin2h = max(1.0 - cos2h, 0.0078125); // 2^(-14/2), so sin2h^2 > 0 in fp16
+	float sin4h = sin2h * sin2h;
+	float cot2 = -cos2h / (a2 * sin2h);
+	return 1.0 / (UNITY_PI * (4.0 * a2 + 1.0) * sin4h) * (4.0 * exp(cot2) + sin4h);
+}
+
+float D_Charlie(float roughness, float NoH) {
+	// Estevez and Kulla 2017, "Production Friendly Microfacet Sheen BRDF"
+	float a = roughness ;
+	float invAlpha = 1.0 / a;
+	float cos2h = NoH * NoH;
+	float sin2h = max(1.0 - cos2h, 0.0078125); // 2^(-14/2), so sin2h^2 > 0 in fp16
+	return (2.0 + invAlpha) * pow(sin2h, invAlpha * 0.5) / (2.0 * UNITY_PI);
+}
+
+float3 FilamentDiffuseBRDF(float3 baseColor, float roughness, float LDotH, float LDotN, float VDotN)
+{
+	float FD90 = 0.5 + 2 * LDotH*LDotH*roughness;
+	float diffBRDF = (1 + (FD90 - 1)*Pow5(1 - LDotN))*(1 + (FD90 - 1)*Pow5(1 - VDotN))*baseColor*UNITY_INV_PI;
+	diffBRDF *= saturate(LDotN + 0.5 / 1.5);
+	return diffBRDF;
+}
+
+
+float3 FilamentSpecularBRDF(float3 sheenColor, float3 subsurfaceColor, float cloth, float3 SpecularColor, float roughness, float NDotH, float VDotH, float LDotN, float VDotN)
+{
+	//claculate D
+	float alpha = roughness * roughness;
+	float alpha2 = alpha * alpha;
+	float tmp = NDotH * NDotH*(alpha2 - 1) + 1;
+	float D = alpha * alpha / max(UNITY_PI*tmp*tmp, 1e-7);
+
+	//calculate F
+	tmp = (-5.55473*VDotH - 6.98316)*VDotH;
+	float3 F = SpecularColor + (1 - SpecularColor)*pow(2, tmp);
+
+	//culate G
+	float k = (roughness + 1)*(roughness + 1) / 8;
+	float GV = 1.0 / max(VDotN*(1 - k) + k, 1e-7);
+	float GL = 1.0 / max(LDotN*(1 - k) + k, 1e-7);
+	float G = GV * GL;
+
+	float3 spec1 = 0.25* D * G * F;
+
+	//calculate cloth
+	float D2 = D_Charlie(roughness, NDotH);
+	float Vis2 = rcp(4 * (LDotN + VDotN - LDotN * VDotN) + 0.001);
+	float3 spec2 = (D2 * Vis2)* sheenColor;
+
+	return lerp(spec1, spec2, cloth);
+}
+
 #endif
