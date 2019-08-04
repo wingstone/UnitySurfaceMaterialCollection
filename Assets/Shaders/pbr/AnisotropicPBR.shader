@@ -1,16 +1,20 @@
-﻿Shader "Custom/UnityPBR_GAMMA"
+﻿Shader "Custom/AnisotropicPBR"
 {
     Properties
     {
-		[Gamma][NoScaleOffset]_MainTex ("Texture", 2D) = "white" {}
-		[Toggle(ENABLE_SPECULAR_GLOSSNESS)]_Use_Specular_Glossness("Use_Specular_Glossness", Float) = 1
-		[Gamma][NoScaleOffset]_SpecularTex("SpecularTex", 2D) = "white"{}
-		[NoScaleOffset]_NormalTex("NormalTex", 2D) = "bump"{}
-		[NoScaleOffset]_OcclusionTex("OcclusionTex", 2D) = "white"{}
-		[NoScaleOffset]_EmissionTex("EmissionTex", 2D) = "black"{}
+		_DiffuseColor("DiffuseColor", Color) = (1,1,1,1)
+		_SpecularColor("SpecularColor", Color) = (1,1,1,1)
+		_Glossness("Glossness", Range(0, 1)) = 0.5
+		_NormalTex("NormalTex", 2D) = "bump"{}
+		_OcclusionTex("OcclusionTex", 2D) = "white"{}
+		_EmissionTex("EmissionTex", 2D) = "black"{}
 
-		_SmoothnessScale("SmoothnessScale", Range(0,1)) = 1
-		_EnviromentIntensity("EnviromentIntensity", Range(0,1)) = 1
+		_AlphaX("Roughness in Brush Direction", Range(0, 1)) = 1.0
+		_AlphaY("Roughness orthogonal to Brush Direction", Range(0, 1)) = 1.0
+
+		_SpecularFactor("SpecularFactor", Range(0,5)) = 1
+		[HiddenInInspector]_EnviromentIntensity("EnviromentIntensity", Range(0,1)) = 1
+		[HiddenInInspector]_EnviromentSpecularIntensity("EnviromentIntensity", Range(0,1)) = 1
     }
     SubShader
     {
@@ -23,15 +27,12 @@
 
             CGPROGRAM
             #pragma vertex vert
-            #pragma fragment Unityfrag
+            #pragma fragment Anisotropicfrag
 
             #pragma multi_compile_fwdbase		//声明光照与阴影相关的宏
-			
-			#pragma shader_feature ENABLE_SPECULAR_GLOSSNESS
-			#include "CommenPBR.cginc"
-
-            ENDCG
-        }
+			#include "AnisotropicPBR.cginc"
+			ENDCG
+		}
 
 		Pass
 		{

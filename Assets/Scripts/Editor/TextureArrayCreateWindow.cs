@@ -51,11 +51,6 @@ public class TextureArrayCreateWindow : EditorWindow
                 
         if (GUILayout.Button("Create Texture Array"))
         {
-            if(!SystemInfo.SupportsTextureFormat(textureFormat))
-            {
-                Debug.Log(DebugPrefix() + "System don't support this setting texture format!!");
-                return;
-            }
             CreateTextureArray();
         }
     }
@@ -99,7 +94,13 @@ public class TextureArrayCreateWindow : EditorWindow
             return;
         }
 
-        Texture2DArray texArr = new Texture2DArray(textures[0].width, textures[0].width, textures.Length, textureFormat, false, false);
+        if (!textures[0])
+        {
+            Debug.Log(DebugPrefix() + "Texture " + 0 + " don't exist!!");
+            return;
+        }
+
+        Texture2DArray texArr = new Texture2DArray(textures[0].width, textures[0].width, textures.Length, textureFormat, true, true);
 
         if (copyTexMethod == ECopyTexMethpd.CopyTexture)
         {
@@ -107,7 +108,10 @@ public class TextureArrayCreateWindow : EditorWindow
             {
                 if (!CheckTexture(textures[i], i, texArr.width, texArr.height))
                     return;
-                Graphics.CopyTexture(textures[i], 0, 0, texArr, i, 0);
+                for (int j = 0; j < textures[i].mipmapCount; j++)
+                {
+                    Graphics.CopyTexture(textures[i], 0, j, texArr, i, j);
+                }
             }
         }
         else if (copyTexMethod == ECopyTexMethpd.SetPexels)
@@ -116,7 +120,10 @@ public class TextureArrayCreateWindow : EditorWindow
             {
                 if (!CheckTexture(textures[i], i, texArr.width, texArr.height))
                     return;
-                texArr.SetPixels(textures[i].GetPixels(), i, 0);
+                for (int j = 0; j < textures[i].mipmapCount; j++)
+                {
+                    texArr.SetPixels(textures[i].GetPixels(), i, j);
+                }
             }
             texArr.Apply();
         }

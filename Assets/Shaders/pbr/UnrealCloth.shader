@@ -1,19 +1,20 @@
-﻿Shader "Custom/AnisotropicPBR"
+﻿Shader "Custom/UnrealCloth"
 {
     Properties
     {
-        _MainTex ("Texture", 2D) = "white" {}
-		[Toggle(ENABLE_SPECULAR_GLOSSNESS)]_Use_Specular_Glossness("Use_Specular_Glossness", Int) = 1
-		_SpeculerTex("SpeculerTex", 2D) = "white"{}
-		_NormalTex("NormalTex", 2D) = "bump"{}
-		_OcclusionTex("OcclusionTex", 2D) = "white"{}
-		_EmissionTex("EmissionTex", 2D) = "black"{}
+		_DiffuseColor("DiffuseColor", Color) = (1,1,1,1)
+		_SpecularColor("SpecularColor", Color) = (1,1,1,1)
+		_Glossness("Glossness", Range(0, 1)) = 0.5
+		[NoScaleOffset]_NormalTex("NormalTex", 2D) = "bump"{}
+		[NoScaleOffset]_OcclusionTex("OcclusionTex", 2D) = "white"{}
+		[NoScaleOffset]_EmissionTex("EmissionTex", 2D) = "black"{}
 
-		_AlphaX("Roughness in Brush Direction", Range(0, 1)) = 1.0
-		_AlphaY("Roughness orthogonal to Brush Direction", Range(0, 1)) = 1.0
+		_FuzzColor("FuzzColor", Color) = (1,1,1,1)
+		_Cloth("Cloth", Range(0,1))= 0
 
-		_SmoothnessScale("SmoothnessScale", Range(0,1)) = 1
-		_EnviromentIntensity("EnviromentIntensity", Range(0,1)) = 1
+		_SpecularFactor("SpecularFactor", Range(0,5)) = 1
+		[HiddenInInspector]_EnviromentIntensity("EnviromentIntensity", Range(0,1)) = 1
+		[HiddenInInspector]_EnviromentSpecularIntensity("EnviromentIntensity", Range(0,1)) = 1
     }
     SubShader
     {
@@ -26,20 +27,19 @@
 
             CGPROGRAM
             #pragma vertex vert
-            #pragma fragment Anisotropicfrag
+            #pragma fragment UnrealClothfrag
 
             #pragma multi_compile_fwdbase		//声明光照与阴影相关的宏
-			#pragma shader_feature ENABLE_SPECULAR_GLOSSNESS
+			#include "UnrealCloth.cginc"
 
-			#include "CommenPBR.cginc"
-			ENDCG
-		}
+            ENDCG
+        }
 
 		Pass
 		{
 			Tags {"LightMode" = "FowardAdd"}
 
-			//待做
+			
 		}
 
 		Pass

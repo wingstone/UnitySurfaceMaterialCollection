@@ -2,6 +2,11 @@
 #define _BRDF_
 //note: LDotH = VDotH;
 
+#define CommenDiffuseBRDF UnrealDiffuseBRDF
+#define CommenSpecularBRDF DesineySpecularBRDF
+#define CommenEnviromentBRDF UnityEnviromentBRDF
+
+
 float Pow4(float t)
 {
 	return t * t*t*t;
@@ -27,7 +32,7 @@ float3 DesineySpecularBRDF(float3 SpecularColor, float roughness, float NDotH, f
 	float alpha = roughness * roughness;
 	float alpha2 = alpha * alpha;
 	float tmp = NDotH * NDotH*(alpha2 - 1) + 1;
-	float D = alpha * alpha / (UNITY_PI*tmp*tmp);
+	float D = alpha * alpha / max(UNITY_PI*tmp*tmp, 1e-7);
 
 	//calculate F
 	float F = SpecularColor + (1 - SpecularColor)*Pow5(1 - VDotH);
@@ -39,40 +44,14 @@ float3 DesineySpecularBRDF(float3 SpecularColor, float roughness, float NDotH, f
 	float GL = 2 * LDotN / (LDotN + sqrt(alpha2 + (1 - alpha2)*LDotN*LDotN));
 	float G = GV * GL;
 
-	return D * G / (4 * LDotN*VDotN)* F;
+	return D * G / max(4 * LDotN*VDotN, 1e-7)* F;
 }
 
 //unity diffuse brdf
 float3 UnityDiffuseBRDF(float3 baseColor, float roughness, float LDotH, float LDotN, float VDotN)
 {
 	float FD90 = 0.5 + 2 * LDotH*LDotH*roughness;
-	return (1 + (FD90 - 1)*Pow5(1 - LDotN))*(1 + (FD90 - 1)*Pow5(1 - VDotN))*baseColor;
-}
-
-//unity Specular brdf
-float3 UnitySpecularBRDF(float3 SpecularColor, float roughness, float NDotH, float VDotH, float LDotN, float VDotN)
-{
-	//claculate D
-	float alpha = roughness * roughness;
-	alpha = max(alpha, 0.002);
-	float alpha2 = alpha * alpha;
-	float tmp = NDotH * NDotH*(alpha2 - 1) + 1;
-	float D = alpha2 *UNITY_INV_PI / (tmp*tmp+1e-7f);
-
-	//calculate F
-	float F = SpecularColor + (1 - SpecularColor)*Pow5(1 - VDotH);
-
-	//culate G
-	float GV = VDotN * sqrt(VDotN*VDotN*(1 - alpha2) + alpha2);
-	float GL = LDotN * sqrt(LDotN*LDotN*(1 - alpha2) + alpha2);
-	float G = 0.5/(GV+GL+1e-5f);
-
-	float specularTerm = D * G *UNITY_PI;
-#   ifdef UNITY_COLORSPACE_GAMMA
-	specularTerm = sqrt(max(1e-4h, specularTerm));
-#   endif
-
-	return specularTerm * F;
+	return (1 + (FD90 - 1)*Pow5(1 - LDotN))*(1 + (FD90 - 1)*Pow5(1 - VDotN))*baseColor*UNITY_INV_PI;
 }
 
 float3 UnityEnviromentBRDF(float3 SpecularColor, float roughness, float VDotN)
@@ -127,7 +106,7 @@ float3 UnrealClothSpecularBRDF(float3 fuzzColor, float cloth, float3 SpecularCol
 	float alpha = roughness * roughness;
 	float alpha2 = alpha * alpha;
 	float tmp = NDotH * NDotH*(alpha2 - 1) + 1;
-	float D = alpha * alpha / (UNITY_PI*tmp*tmp);
+	float D = alpha * alpha / max(UNITY_PI*tmp*tmp, 1e-7);
 
 	//calculate F
 	tmp = (-5.55473*VDotH - 6.98316)*VDotH;
@@ -135,15 +114,15 @@ float3 UnrealClothSpecularBRDF(float3 fuzzColor, float cloth, float3 SpecularCol
 
 	//culate G
 	float k = (roughness + 1)*(roughness + 1) / 8;
-	float GV = 1.0 / (VDotN*(1 - k) + k);
-	float GL = 1.0 / (LDotN*(1 - k) + k);
+	float GV = 1.0 / max(VDotN*(1 - k) + k, 1e-7);
+	float GL = 1.0 / max(LDotN*(1 - k) + k, 1e-7);
 	float G = GV * GL;
 
 	float3 spec1 =0.25* D * G * F;
 
 	//calculate cloth
 	float d = (1 - alpha2)*NDotH*NDotH + alpha2;
-	float D2 = rcp(UNITY_PI*(1 + 4 * alpha2))*(1 + 4 * alpha2*alpha2 / (d*d + 0.001));
+	float D2 = rcp(UNITY_PI*(1 + 4 * alpha2))*(1 + 4 * alpha2*alpha2 / max(d*d, 1e-7));
 	float Vis2 = rcp(4 * (LDotN + VDotN - LDotN * VDotN) + 0.001);
 	float3 Fc = Pow5(1 - VDotH);
 	float3 F2 = saturate(50.0*fuzzColor.g)*Fc + (1 - Fc)*fuzzColor;
@@ -205,6 +184,7 @@ float3 WardSpecularBRDF(float3 SpecularColor, float dotHTAlphaX, float dotHBAlph
 			+ dotHBAlphaY * dotHBAlphaY) / (1.0 + NDotH));
 }
 
+//kajia hair model
 half StrandSpecular(half TDotH, half specPower)
 {
 	half sinTH = sqrt(1 - TDotH* TDotH);
