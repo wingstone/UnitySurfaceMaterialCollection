@@ -49,7 +49,7 @@
             fixed4 frag (v2f i) : SV_Target
             {
 				fixed3 col = 0;
-				col = tex2D(_ReflectionTex, i.screenUV);
+				col = tex2D(_ReflectionTex, i.screenUV)*_BaseColor;
 
                 return fixed4(col, 1);
             }

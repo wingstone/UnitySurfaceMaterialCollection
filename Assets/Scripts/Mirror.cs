@@ -7,63 +7,69 @@ using UnityEngine;
 public class Mirror : MonoBehaviour
 {
     public Camera targetCamera;
+    public Material blurMat;
+    public int textureSize = 1024;
+    public LayerMask refLayer = -1;
 
     private Camera m_refCamera;
     private RenderTexture m_refRendreTexture;
+    private RenderTexture m_refBlurRendreTexture;
+    //private RenderTexture m_refBlurRendreTexture2;
     private Material m_material;
+    private bool m_isRendering = false;
 
     private float m_planeOffset = 0.07f;
     
+    private void OnWillRenderObject()
+    {
+        RenderReflectTexture();
+        
+        m_material.SetTexture("_ReflectionTex", m_refRendreTexture);
+    }
 
     // Start is called before the first frame update
     void RenderReflectTexture()
     {
+        if (!enabled || !blurMat || !GetComponent<MeshRenderer>().enabled || !GetComponent<MeshRenderer>().sharedMaterial ||  !targetCamera)
+            return;
+
         if (!m_material)
         {
-            MeshRenderer meshRender = GetComponent<MeshRenderer>();
-            m_material = meshRender.sharedMaterial;
+            m_material = GetComponent<MeshRenderer>().sharedMaterial;
         }
 
-
-        if (!targetCamera)
-            return;
 
         if (!m_refRendreTexture)
         {
-            int width = 512;
-            int hight = 512;
-            int antiAliasing = 1;
-
-            if (targetCamera.targetTexture != null)
-            {
-                width = targetCamera.targetTexture.width;
-                hight = targetCamera.targetTexture.height;
-                antiAliasing = targetCamera.targetTexture.antiAliasing;
-            }
-            else
-            {
-                antiAliasing = QualitySettings.antiAliasing;
-            }
-            antiAliasing = antiAliasing < 1 ? 1 : antiAliasing;
-
-            m_refRendreTexture = new RenderTexture(width, hight, 16, RenderTextureFormat.ARGBHalf);
-
-
-            m_refRendreTexture.antiAliasing = antiAliasing;
-            m_refRendreTexture.name = "__MirrorReflection" + GetInstanceID();
-            m_refRendreTexture.isPowerOfTwo = true;
-            m_refRendreTexture.hideFlags = HideFlags.DontSave;
-            m_refRendreTexture.filterMode = FilterMode.Bilinear;
+            m_refRendreTexture = CreateTexture("mirrorTex");
         }
 
-        if(!m_refCamera)
+        if (!m_refBlurRendreTexture)
         {
-            GameObject GO = new GameObject("reflectCamera", typeof(Camera));
+            m_refBlurRendreTexture = CreateTexture("mirrorBlurTex");
+        }
+
+        //if (!m_refBlurRendreTexture2)
+        //{
+        //    CreateTexture(m_refBlurRendreTexture2);
+        //}
+
+        if (!m_refCamera)
+        {
+            GameObject GO = new GameObject("reflectCamera", typeof(Camera), typeof(Skybox));
             m_refCamera = GO.GetComponent<Camera>();
             m_refCamera.CopyFrom(targetCamera);
+            m_refCamera.enabled = false;
             GO.hideFlags = HideFlags.HideAndDontSave;
+
+            UpdateCameraModes(targetCamera, m_refCamera);
         }
 
+        if (m_isRendering)
+        {
+            return;
+        }
+        m_isRendering = true;
 
         //set refcamera.pos
         Vector3 norm = transform.up;
@@ -94,10 +100,81 @@ public class Mirror : MonoBehaviour
         m_refCamera.targetTexture = m_refRendreTexture;
         m_refCamera.depthTextureMode = DepthTextureMode.Depth;
         int mirrorLayer = LayerMask.NameToLayer("Mirror");
-        m_refCamera.cullingMask = ~(1 << mirrorLayer | 1 << 4); // never render water and mirror layer
+        m_refCamera.cullingMask = ~(1 << mirrorLayer | 1 << 4) & refLayer.value; // never render water and mirror layer
+        GL.invertCulling = true;
+
         m_refCamera.Render();
 
-        
+        //blur
+        m_refBlurRendreTexture.DiscardContents();
+        Graphics.SetRenderTarget(m_refBlurRendreTexture);
+        Graphics.Blit(m_refRendreTexture, m_refBlurRendreTexture, blurMat, 0);
+        m_refRendreTexture.DiscardContents();
+        Graphics.SetRenderTarget(m_refRendreTexture);
+        Graphics.Blit(m_refBlurRendreTexture, m_refRendreTexture, blurMat, 1);
+        //Graphics.SetRenderTarget(m_refBlurRendreTexture1);
+        //Graphics.Blit(m_refBlurRendreTexture2, m_refBlurRendreTexture1, blurMat, 1);
+        Graphics.SetRenderTarget(null);
+
+        GL.invertCulling = false;
+
+        m_isRendering = false;
+    }
+
+    private RenderTexture CreateTexture(string name)
+    {
+        int antiAliasing = 1;
+
+        if (targetCamera.targetTexture != null)
+        {
+            antiAliasing = targetCamera.targetTexture.antiAliasing;
+        }
+        else
+        {
+            antiAliasing = QualitySettings.antiAliasing;
+        }
+        antiAliasing = antiAliasing < 1 ? 1 : antiAliasing;
+
+        RenderTexture texture = new RenderTexture(textureSize, textureSize, 16, RenderTextureFormat.ARGBHalf);
+
+        texture.antiAliasing = antiAliasing;
+        texture.name = name + GetInstanceID();
+        texture.isPowerOfTwo = true;
+        texture.hideFlags = HideFlags.DontSave;
+        texture.filterMode = FilterMode.Bilinear;
+        return texture;
+    }
+
+    private void UpdateCameraModes(Camera src, Camera dest)
+    {
+        if (dest == null)
+            return;
+        // set camera to clear the same way as current camera
+        dest.clearFlags = src.clearFlags;
+        dest.backgroundColor = src.backgroundColor;
+        if (src.clearFlags == CameraClearFlags.Skybox)
+        {
+            Skybox sky = src.GetComponent(typeof(Skybox)) as Skybox;
+            Skybox mysky = dest.GetComponent(typeof(Skybox)) as Skybox;
+            if (!sky || !sky.material)
+            {
+                mysky.enabled = false;
+            }
+            else
+            {
+                mysky.enabled = true;
+                mysky.material = sky.material;
+            }
+        }
+        // update other values to match current camera.
+        // even if we are supplying custom camera&projection matrices,
+        // some of values are used elsewhere (e.g. skybox uses far plane)
+        dest.farClipPlane = src.farClipPlane;
+        dest.nearClipPlane = src.nearClipPlane;
+        dest.orthographic = src.orthographic;
+        dest.fieldOfView = src.fieldOfView;
+        dest.aspect = src.aspect;
+        dest.orthographicSize = src.orthographicSize;
     }
 
     Matrix4x4 GetReflectMatrixFromPlane(Vector4 plane)
@@ -149,10 +226,27 @@ public class Mirror : MonoBehaviour
         return 0.0f;
     }
 
-    private void OnWillRenderObject()
+    private void OnDisable()
     {
-        RenderReflectTexture();
-        
-        m_material.SetTexture("_ReflectionTex", m_refRendreTexture);
+        if (m_refCamera)
+        {
+            DestroyImmediate(m_refCamera);
+            m_refCamera = null;
+        }
+        if (m_refRendreTexture)
+        {
+            DestroyImmediate(m_refRendreTexture);
+            m_refRendreTexture = null;
+        }
+        if (m_refBlurRendreTexture)
+        {
+            DestroyImmediate(m_refBlurRendreTexture);
+            m_refBlurRendreTexture = null;
+        }
+        //if (m_refBlurRendreTexture2)
+        //{
+        //    DestroyImmediate(m_refBlurRendreTexture2);
+        //    m_refBlurRendreTexture2 = null;
+        //}
     }
 }
