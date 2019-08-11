@@ -78,6 +78,11 @@ fixed4 Hairfrag(v2f i, half vFace : VFACE) : SV_Target
 	//indirect light
 #if UNITY_SHOULD_SAMPLE_SH
 	color += ShadeSHPerPixel(surfaceOtherData.normal, i.vLight, i.worldPos)* baseColor* occlusion * _EnviromentIntensity;
+
+#ifdef UNITY_COLORSPACE_GAMMA
+	color = GammaToLinearSpace(color);
+#endif
+
 #endif
 
 	//diffuse data

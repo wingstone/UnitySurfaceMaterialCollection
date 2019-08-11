@@ -2,6 +2,18 @@
 {
 	Properties
 	{
+		//颜色
+		//经过测试，shader property的颜色也是gamma空间的==
+		//带[HDR]标签的shader 颜色位于线性空间
+		//使用自定义GUI不影响上面的性质==
+		//从外界脚本传入的颜色值都是线性的
+		//纹理
+		//纹理要根据使用纹理来判断，sRGB表示是否位于gamma空间
+		//纹理的a通道不进行空间转换，按照位于线性空间进行计算
+		[Toggle(USE_TEX)]use_tex("Use Tex", Int) = 0
+		_DiffuseTex("Diffuse Tex", 2D) = "white"{}
+		_SpecularTex("Specular Tex", 2D) = "gray"{}
+
 		_DiffuseColor("DiffuseColor", Color) = (1,1,1,1)
 		_SpecularColor("SpecularColor", Color) = (1,1,1,1)
 		_Glossness("Glossness", Range(0, 1)) = 0.5
@@ -23,6 +35,9 @@
 				Tags {"LightMode" = "ForwardBase"}
 
 				CGPROGRAM
+
+				#pragma shader_feature USE_TEX
+
 				#pragma vertex vert
 				#pragma fragment Optimizedfrag
 

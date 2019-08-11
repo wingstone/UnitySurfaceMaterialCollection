@@ -7,15 +7,16 @@ using UnityEngine;
 public class Mirror : MonoBehaviour
 {
     public Camera targetCamera;
-    public Material blurMat;
-    public int textureSize = 1024;
+    public Shader blurShader;
     public LayerMask refLayer = -1;
+
+    public int textureSize = 1024;
+    public int m_blutIterate = 1;
 
     private Camera m_refCamera;
     private RenderTexture m_refRendreTexture;
-    private RenderTexture m_refBlurRendreTexture;
-    //private RenderTexture m_refBlurRendreTexture2;
     private Material m_material;
+    private Material blurMat;
     private bool m_isRendering = false;
 
     private float m_planeOffset = 0.07f;
@@ -30,8 +31,14 @@ public class Mirror : MonoBehaviour
     // Start is called before the first frame update
     void RenderReflectTexture()
     {
-        if (!enabled || !blurMat || !GetComponent<MeshRenderer>().enabled || !GetComponent<MeshRenderer>().sharedMaterial ||  !targetCamera)
+        if (!enabled || !blurShader || !GetComponent<MeshRenderer>().enabled || !GetComponent<MeshRenderer>().sharedMaterial ||  !targetCamera)
             return;
+
+        if (!blurMat)
+        {
+            blurMat = new Material(blurShader);
+            blurMat.hideFlags = HideFlags.HideAndDontSave;
+        }
 
         if (!m_material)
         {
@@ -44,10 +51,8 @@ public class Mirror : MonoBehaviour
             m_refRendreTexture = CreateTexture("mirrorTex");
         }
 
-        if (!m_refBlurRendreTexture)
-        {
-            m_refBlurRendreTexture = CreateTexture("mirrorBlurTex");
-        }
+        RenderTexture m_refBlurRendreTexture1 = RenderTexture.GetTemporary(textureSize, textureSize, 16);
+        RenderTexture m_refBlurRendreTexture2 = RenderTexture.GetTemporary(textureSize, textureSize, 16);
 
         //if (!m_refBlurRendreTexture2)
         //{
@@ -105,18 +110,41 @@ public class Mirror : MonoBehaviour
 
         m_refCamera.Render();
 
+        GL.invertCulling = false;
+
+        //copy
+        m_refBlurRendreTexture1.DiscardContents();
+        Graphics.SetRenderTarget(m_refBlurRendreTexture1);
+        Graphics.SetRenderTarget(m_refBlurRendreTexture1.colorBuffer, m_refBlurRendreTexture1.depthBuffer);
+        GL.Clear(true, true, new Color(0, 0, 0, 0));
+        Graphics.Blit(m_refRendreTexture, m_refBlurRendreTexture1);
+
         //blur
-        m_refBlurRendreTexture.DiscardContents();
-        Graphics.SetRenderTarget(m_refBlurRendreTexture);
-        Graphics.Blit(m_refRendreTexture, m_refBlurRendreTexture, blurMat, 0);
+        for (int i = 0; i < m_blutIterate; i++)
+        {
+            m_refBlurRendreTexture2.DiscardContents();
+            Graphics.SetRenderTarget(m_refBlurRendreTexture2);
+            Graphics.SetRenderTarget(m_refBlurRendreTexture2.colorBuffer, m_refBlurRendreTexture2.depthBuffer);
+            GL.Clear(true, true, new Color(0, 0, 0, 0));
+            Graphics.Blit(m_refBlurRendreTexture1, m_refBlurRendreTexture2, blurMat, 0);
+
+            m_refBlurRendreTexture1.DiscardContents();
+            Graphics.SetRenderTarget(m_refBlurRendreTexture1);
+            Graphics.SetRenderTarget(m_refBlurRendreTexture1.colorBuffer, m_refBlurRendreTexture1.depthBuffer);
+            GL.Clear(true, true, new Color(0, 0, 0, 0));
+            Graphics.Blit(m_refBlurRendreTexture2, m_refBlurRendreTexture1, blurMat, 1);
+        }
+
+        //copy
         m_refRendreTexture.DiscardContents();
         Graphics.SetRenderTarget(m_refRendreTexture);
-        Graphics.Blit(m_refBlurRendreTexture, m_refRendreTexture, blurMat, 1);
-        //Graphics.SetRenderTarget(m_refBlurRendreTexture1);
-        //Graphics.Blit(m_refBlurRendreTexture2, m_refBlurRendreTexture1, blurMat, 1);
-        Graphics.SetRenderTarget(null);
+        Graphics.SetRenderTarget(m_refRendreTexture.colorBuffer, m_refRendreTexture.depthBuffer);
+        GL.Clear(true, true, new Color(0, 0, 0, 0));
+        Graphics.Blit(m_refBlurRendreTexture1, m_refRendreTexture);
 
-        GL.invertCulling = false;
+        m_refBlurRendreTexture1.Release();
+        m_refBlurRendreTexture2.Release();
+        Graphics.SetRenderTarget(null);
 
         m_isRendering = false;
     }
@@ -238,15 +266,5 @@ public class Mirror : MonoBehaviour
             DestroyImmediate(m_refRendreTexture);
             m_refRendreTexture = null;
         }
-        if (m_refBlurRendreTexture)
-        {
-            DestroyImmediate(m_refBlurRendreTexture);
-            m_refBlurRendreTexture = null;
-        }
-        //if (m_refBlurRendreTexture2)
-        //{
-        //    DestroyImmediate(m_refBlurRendreTexture2);
-        //    m_refBlurRendreTexture2 = null;
-        //}
     }
 }

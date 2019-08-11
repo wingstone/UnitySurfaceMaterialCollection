@@ -85,7 +85,7 @@ Material:
     - _EnviromentSpecularIntensity: 1
     - _GlossMapScale: 1
     - _Glossiness: 0.5
-    - _Glossness: 0
+    - _Glossness: 0.157
     - _GlossyReflections: 1
     - _Metallic: 0
     - _Mode: 0

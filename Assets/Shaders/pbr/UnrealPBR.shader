@@ -2,6 +2,10 @@
 {
     Properties
     {
+		[Toggle(USE_TEX)]use_tex("Use Tex", Int) = 0
+		_DiffuseTex("Diffuse Tex", 2D) = "white"{}
+		_SpecularTex("Specular Tex", 2D) = "gray"{}
+
 		_DiffuseColor("DiffuseColor", Color) = (1,1,1,1)
 		_SpecularColor("SpecularColor", Color) = (1,1,1,1)
 		_Glossness("Glossness", Range(0, 1)) = 0.5
@@ -26,6 +30,9 @@
 			Tags {"LightMode" = "ForwardBase"}
 
             CGPROGRAM
+
+			#pragma shader_feature USE_TEX
+
             #pragma vertex vert
             #pragma fragment Unrealfrag
 

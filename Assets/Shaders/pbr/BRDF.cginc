@@ -57,11 +57,11 @@ float3 UnityDiffuseBRDF(float3 baseColor, float roughness, float LDotH, float LD
 float3 UnityEnviromentBRDF(float3 SpecularColor, float roughness, float VDotN)
 {
 	float surfaceReduction = 1.0 / (Pow4(roughness) + 1.0);
-#ifdef UNITY_COLORSPACE_GAMMA
-	surfaceReduction = 1.0 - 0.28*roughness*roughness*roughness;      // 1-0.28*x^3 as approximation for (1/(x^4+1))^(1/2.2) on the domain [0;1]
-#else
-	surfaceReduction = = 1.0 / (Pow4(roughness) + 1.0);           // fade \in [0.5;1]
-#endif
+//#ifdef UNITY_COLORSPACE_GAMMA
+//	surfaceReduction = 1.0 - 0.28*roughness*roughness*roughness;      // 1-0.28*x^3 as approximation for (1/(x^4+1))^(1/2.2) on the domain [0;1]
+//#else
+	surfaceReduction = 1.0 / (Pow4(roughness) + 1.0);           // fade \in [0.5;1]
+//#endif
 	float oneMinusReflectivity = 1 - SpecularStrength(SpecularColor);
 	half grazingTerm = saturate(1 - roughness + (1 - oneMinusReflectivity));
 	half t = Pow4(1 - VDotN);

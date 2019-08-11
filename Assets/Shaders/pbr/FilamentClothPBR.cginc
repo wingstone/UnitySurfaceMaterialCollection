@@ -42,6 +42,11 @@ fixed4 FilamentClothfrag(v2f i, half vFace : FACE) : SV_Target
 	//indirect light
 #if UNITY_SHOULD_SAMPLE_SH
 	color += ShadeSHPerPixel(surfaceOtherData.normal, i.vLight, i.worldPos)* surfaceTexData.diffColor* surfaceTexData.occlusion * _EnviromentIntensity;
+
+#ifdef UNITY_COLORSPACE_GAMMA
+	color = GammaToLinearSpace(color);
+#endif
+
 #endif
 
 	//diffuse data
