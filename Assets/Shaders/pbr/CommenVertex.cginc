@@ -8,6 +8,7 @@ struct appdata
 	float3 normal : NORMAL;
 	float4 tangent : TANGENT;
 	float2 uv : TEXCOORD0;
+	float2 uv1 : TEXCOORD1;	//for lightmap
 };
 
 struct v2f
@@ -18,7 +19,7 @@ struct v2f
 	float3 tangent : TEXCOORD2;
 	float3 binormal : TEXCOORD3;
 	float3 normal : TEXCOORD4;
-	float4 vLight : TEXCOORD5;
+	float4 ambientOrLightmapUV : TEXCOORD5;
 	LIGHTING_COORDS(6, 7)
 
 	float4 pos : SV_POSITION;		//shadow宏要求此处必须为pos变量，shit。。。
@@ -67,8 +68,12 @@ v2f vert(appdata v)
 //
 //		return ambientOrLightmapUV;
 //	}
-	o.vLight = 0;
-#if UNITY_SHOULD_SAMPLE_SH
+	o.ambientOrLightmapUV = 0;
+#ifdef LIGHTMAP_ON
+	ambientOrLightmapUV.xy = v.uv1.xy * unity_LightmapST.xy + unity_LightmapST.zw;
+	ambientOrLightmapUV.zw = 0;
+	// Sample light probe for Dynamic objects only (no static or dynamic lightmaps)
+#elif UNITY_SHOULD_SAMPLE_SH
 
 	half4 ambientOrLightmapUV = 0;
 #ifdef VERTEXLIGHT_ON
@@ -81,7 +86,7 @@ v2f vert(appdata v)
 #endif
 
 	ambientOrLightmapUV.rgb = ShadeSHPerVertex(o.normal, ambientOrLightmapUV.rgb);
-	o.vLight.rgb = ambientOrLightmapUV.rgb;
+	o.ambientOrLightmapUV.rgb = ambientOrLightmapUV.rgb;
 #endif
 
 	//We need this for shadow receving

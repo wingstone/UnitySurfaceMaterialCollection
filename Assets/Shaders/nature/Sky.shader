@@ -50,6 +50,9 @@
 #ifdef UNITY_COLORSPACE_GAMMA
 				half3 skyColor = GammaToLinearSpace(_SkyColor);
 				half3 groundColor = GammaToLinearSpace(_GroundColor);
+#else
+				half3 skyColor = _SkyColor;
+				half3 groundColor = _GroundColor;
 #endif
 
 				col = lerp(skyColor, groundColor, saturate(-view.y / SKY_GROUND_THRESHOLD));
