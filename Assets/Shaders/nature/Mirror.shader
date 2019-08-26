@@ -42,6 +42,7 @@
                 o.vertex = UnityObjectToClipPos(v.vertex);
                 o.uv = v.uv;
 				o.screenUV = o.vertex.xy / o.vertex.w*0.5 + 0.5;
+				o.screenUV.y = 1 - o.screenUV.y;
 				o.normal = UnityObjectToWorldNormal(v.normal);
                 return o;
             }

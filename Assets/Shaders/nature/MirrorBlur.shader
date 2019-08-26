@@ -3,6 +3,7 @@
     Properties
     {
 		[NoScaleOffset]_MainTex("MainTex", 2D) = "white" {}
+		_BlurSize("BlurSize", Range(0, 5)) =  1
     }
     SubShader
     {
@@ -32,6 +33,7 @@
 			sampler2D _MainTex;
 			float4 _MainTex_ST;
 			float4 _MainTex_TexelSize;
+			float _BlurSize;
 
             v2f vert (appdata v)
             {
@@ -50,8 +52,8 @@
 
 				for (int n = 0; n < 3; n++)
 				{
-					col += tex2D(_MainTex, i.uv + half2(n + 1, 0) * _MainTex_TexelSize.x) * weights[n];
-					col += tex2D(_MainTex, i.uv + half2(-n - 1, 0) * _MainTex_TexelSize.x)* weights[n];
+					col += tex2D(_MainTex, i.uv + half2(n + 1, 0) * _MainTex_TexelSize.x * _BlurSize) * weights[n];
+					col += tex2D(_MainTex, i.uv + half2(-n - 1, 0) * _MainTex_TexelSize.x * _BlurSize)* weights[n];
 				}
 
                 return fixed4(col.rgb, 1);
@@ -82,6 +84,7 @@
 			sampler2D _MainTex;
 			float4 _MainTex_ST;
 			float4 _MainTex_TexelSize;
+			float _BlurSize;
 
 			v2f vert(appdata v)
 			{
@@ -100,8 +103,8 @@
 
 				for (int n = 0; n < 3; n++)
 				{
-					col += tex2D(_MainTex, i.uv + half2(0, n + 1) * _MainTex_TexelSize.y) * weights[n];
-					col += tex2D(_MainTex, i.uv + half2(0, -n - 1) * _MainTex_TexelSize.y)* weights[n];
+					col += tex2D(_MainTex, i.uv + half2(0, n + 1) * _MainTex_TexelSize.y * _BlurSize) * weights[n];
+					col += tex2D(_MainTex, i.uv + half2(0, -n - 1) * _MainTex_TexelSize.y * _BlurSize)* weights[n];
 				}
 
 				return fixed4(col.rgb, 1);

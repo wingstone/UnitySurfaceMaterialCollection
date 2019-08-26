@@ -9,7 +9,6 @@ public class GrabScreenClass : MonoBehaviour
     public Shader blurShader;
     private Material blurMaterial;
 
-    private Camera m_Came;
     private Dictionary<Camera, CommandBuffer> m_Cameras = new Dictionary<Camera, CommandBuffer>();
 
     void CleanUp()

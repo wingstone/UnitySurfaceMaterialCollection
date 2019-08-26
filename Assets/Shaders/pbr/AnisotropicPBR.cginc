@@ -38,13 +38,8 @@ fixed4 Anisotropicfrag(v2f i, half vFace : FACE) : SV_Target
 	//indirect light
 	half3 ambient = 0;
 	half2 lightmapUV = 0;
-#if defined(LIGHTMAP_ON)
-	ambient = 0;
-	lightmapUV = i.ambientOrLightmapUV;
-#else
 	ambient = i.ambientOrLightmapUV.rgb;
 	lightmapUV = 0;
-#endif
 
 #if UNITY_SHOULD_SAMPLE_SH
 	ambient = ShadeSHPerPixel(surfaceOtherData.normal, ambient, i.worldPos);
@@ -53,16 +48,6 @@ fixed4 Anisotropicfrag(v2f i, half vFace : FACE) : SV_Target
 #endif
 #endif
 
-#if defined(LIGHTMAP_ON)
-	// Baked lightmaps
-	half4 bakedColorTex = UNITY_SAMPLE_TEX2D(unity_Lightmap, lightmapUV.xy);
-	half3 bakedColor = DecodeLightmap(bakedColorTex);
-#ifdef UNITY_COLORSPACE_GAMMA
-	ambient += GammaToLinearSpace(bakedColor);
-#else
-	ambient += bakedColor;
-#endif
-#endif
 	color += ambient * surfaceTexData.diffColor * surfaceTexData.occlusion * _EnviromentIntensity;
 
 	//diffuse data

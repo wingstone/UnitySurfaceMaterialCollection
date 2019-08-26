@@ -20,7 +20,7 @@
 			Tags {"LightingMode" = "ForwardBase"}
 
 			ZWrite Off
-
+			Cull Front
 
 			CGPROGRAM
 			#pragma vertex vert
