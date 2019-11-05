@@ -20,7 +20,11 @@ fixed4 Disneyfrag(v2f i, half vFace : FACE) : SV_Target
 	float3 color = 0;
 	SurfaceTexData surfaceTexData = GetSurfaceTexData(i.uv);
 
-	SurfaceOtherData surfaceOtherData = GetSurfaceOtherData(i, surfaceTexData.texNormal, vFace);
+	SurfaceOtherData surfaceOtherData = GetSurfaceOtherData(i, surfaceTexData.texNormal,
+#ifdef USE_CLEARCOAT
+		surfaceTexData.texNormal2,
+#endif
+	vFace);
 
 	//shadow light
 	UNITY_LIGHT_ATTENUATION(atten, i, i.worldPos);
@@ -48,6 +52,12 @@ fixed4 Disneyfrag(v2f i, half vFace : FACE) : SV_Target
 	//Specular data
 	float3 SpecularBRDF = DesineySpecularBRDF(surfaceTexData.specularColor, surfaceTexData.roughness, NDotH, VDotH, LDotN, VDotN);
 	color += LDotN * surfaceOtherData.lightCol*SpecularBRDF*_SpecularFactor;
+
+	//clearcoat
+#ifdef USE_CLEARCOAT
+	float3 SpecularBRDF2 = DesineySpecularBRDF(surfaceTexData.specularColor, 1 - surfaceTexData.clearCoatGlossness, NDotH, VDotH, LDotN, VDotN);
+	color += 0.25 * LDotN * surfaceOtherData.lightCol*SpecularBRDF2*surfaceTexData.clearCoat;
+#endif
 
 	//IBL reflection
 	half3 IBLColor = GetIBLColor(surfaceTexData, surfaceOtherData);

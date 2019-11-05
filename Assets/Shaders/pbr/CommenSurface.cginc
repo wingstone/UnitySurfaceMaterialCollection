@@ -6,6 +6,11 @@ struct SurfaceTexData
 	float3 diffColor;
 	float3 specularColor;
 	float3 texNormal;
+#ifdef USE_CLEARCOAT
+	float3 texNormal2;
+	float clearCoat;
+	float clearCoatGlossness;
+#endif
 	float3 occlusion;
 	float3 emission;
 	float roughness;
@@ -18,6 +23,9 @@ struct SurfaceOtherData
 	float3 normal;
 	float3 tangent;
 	float3 binormal;
+#ifdef USE_CLEARCOAT
+	float3 normal2;
+#endif
 	float3 viewDir;
 	float3 reflectDir;
 	float3 halfDir;
@@ -33,6 +41,11 @@ sampler2D _SpecularTex;
 
 float _Glossness;
 sampler2D _NormalTex;
+#ifdef USE_CLEARCOAT
+sampler2D _NormalTex2;
+float _ClearCoat;
+float _ClearCoatGlossness;
+#endif
 float4 _NormalTex_ST;
 sampler2D _OcclusionTex;
 float4 _OcclusionTex_ST;
@@ -52,6 +65,11 @@ SurfaceTexData GetSurfaceTexData(half2 uv)
 #endif
 
 	o.texNormal = UnpackNormal(tex2D(_NormalTex, uv));
+#ifdef USE_CLEARCOAT
+	o.texNormal2 = UnpackNormal(tex2D(_NormalTex2, uv));
+	o.clearCoat = _ClearCoat;
+	o.clearCoatGlossness = _ClearCoatGlossness;
+#endif
 	o.occlusion = tex2D(_OcclusionTex, uv).r;
 	o.emission = tex2D(_EmissionTex, uv);
 
@@ -73,7 +91,11 @@ SurfaceTexData GetSurfaceTexData(half2 uv)
 	return o;
 }
 
-SurfaceOtherData GetSurfaceOtherData(v2f i, float3 texNormal, half vFace)
+SurfaceOtherData GetSurfaceOtherData(v2f i, float3 texNormal,
+#ifdef USE_CLEARCOAT
+	float3 texNormal2,
+#endif
+	half vFace)
 {
 	SurfaceOtherData o;
 #ifdef UNITY_COLORSPACE_GAMMA
@@ -87,6 +109,10 @@ SurfaceOtherData GetSurfaceOtherData(v2f i, float3 texNormal, half vFace)
 	o.tangent = normalize(i.tangent);
 	o.binormal = normalize(cross(o.normal, o.tangent));
 	o.tangent = cross(o.binormal, o.normal);
+#ifdef USE_CLEARCOAT
+	o.normal2 = normalize(texNormal2.x*i.tangent + texNormal2.y*i.binormal + texNormal2.z*i.normal);
+	o.normal2 = lerp(-o.normal2, o.normal2, step(0, vFace));
+#endif
 	o.viewDir = normalize(_WorldSpaceCameraPos - i.worldPos);
 	o.reflectDir = reflect(-o.viewDir, o.normal);
 	o.halfDir = normalize(o.viewDir + o.lightDir);

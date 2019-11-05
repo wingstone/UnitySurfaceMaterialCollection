@@ -14,6 +14,12 @@
 		[NoScaleOffset]_EmissionTex("EmissionTex", 2D) = "black"{}
 
 		_SpecularFactor("SpecularFactor", Range(0,5)) = 1
+
+		[Toggle(USE_CLEARCOAT)]use_ClearCoat("Use ClearCoat", Int) = 0
+		[Normal][NoScaleOffset]_NormalTex2("NormalTex2", 2D) = "bump"{}
+		_ClearCoat("ClearCoat", Range(0, 1)) = 0
+		_ClearCoatGlossness("ClearCoatGlossness", Range(0, 1)) = 0
+
 		[HideInInspector]_EnviromentIntensity("EnviromentIntensity", Range(0,1)) = 1
 		[HideInInspector]_EnviromentSpecularIntensity("EnviromentIntensity", Range(0,1)) = 1
     }
@@ -29,6 +35,7 @@
             CGPROGRAM
 
 			#pragma shader_feature USE_TEX
+			#pragma shader_feature USE_CLEARCOAT
 
             #pragma vertex vert
             #pragma fragment Disneyfrag
