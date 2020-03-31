@@ -50,10 +50,11 @@
             float4 frag (v2f i) : SV_Target
             {
                 float4 col = 0;
-                for( int m = 0; m < 35; m++)
+                for( float m = 0; m < 36; m += 1)
                 {
                     float2 offset = i.uv - _LightSourcePos.xy;
                     float2 uv = _LightSourcePos.xy + offset*_VolumeScale*m;
+                    uv = _LightSourcePos.xy + offset*_VolumeScale*(m + tex2D(_NoiseTex, uv*10).r);
                     col.rgb += tex2D(_SkyBacklight, uv).rgb;
                 }
 

@@ -6,6 +6,7 @@ public class VolumeLight : PostEffectsBase {
 
 	public Shader volumeLightShader;
 	public Texture2D skyBacklightTex;
+	public Texture2D perlinNoiseTex;
 	private Material volumeLightMaterial = null;
 	public Material material {  
 		get {
@@ -33,7 +34,7 @@ public class VolumeLight : PostEffectsBase {
 
 			material.SetFloat("_VolumeScale", volumeScale);
 			material.SetTexture("_SkyBacklight", skyBacklightTex);
-
+			material.SetTexture("_NoiseTex", perlinNoiseTex);
 
 			Graphics.Blit(src, dest, material);
 

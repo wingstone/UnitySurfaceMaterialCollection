@@ -278,6 +278,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   volumeLightShader: {fileID: 4800000, guid: 32d597479dda7ca478082cee452222b8, type: 3}
   skyBacklightTex: {fileID: 2800000, guid: 838fef3ba75968f468c2c54628fde4ec, type: 3}
+  perlinNoiseTex: {fileID: 2800000, guid: 7eb2ff82800a2754aa61b81a9877b935, type: 3}
   volumeScale: 0.04
 --- !u!1 &1138852585
 GameObject:
