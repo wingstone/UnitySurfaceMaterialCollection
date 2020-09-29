@@ -12,6 +12,7 @@
         _TuneCurvature("tuneCurvature-调整曲率", Range(0.001,0.1)) = 1
         _TuneNormalBlur("tuneNormalBlur-调整法线模糊", Color) = (1,1,1,1)
         _TunePenumbraWidth("tunePenumbraWidth-调整半影宽度", Range(0, 1)) = 0.5
+        _BloodColor("blood color", Color) = (1,1,1,1)
     }
     SubShader
     {
@@ -59,6 +60,10 @@
             float _TuneCurvature;
             float4 _TuneNormalBlur;
             float _TunePenumbraWidth;
+            float4 _BloodColor;
+
+            float4x4 _LightMatrix;
+            sampler2D _LightDepthMap;
 
             v2f vert (appdata v)
             {
@@ -156,14 +161,6 @@
                 //shadow light
                 UNITY_LIGHT_ATTENUATION(atten, i, i.worldPos);
                 float3 lightcolor = _LightColor0.rgb*UNITY_PI;
-                lightcolor *= SkinShadow(atten, _TunePenumbraWidth);
-
-                //ambient
-                float3 ambient = 0;
-                #if UNITY_SHOULD_SAMPLE_SH
-                    ambient = ShadeSHPerPixel(N, ambient, i.worldPos)*occlusion;
-                #endif
-                col += diffcolor * ambient;
                 
                 //pre integrated diffuse
                 float dn = length(fwidth(oldN));
@@ -174,8 +171,8 @@
                 float3 bN = lerp(N, oldN, _TuneNormalBlur.b);
                 float3 ndl3 = float3(dot(rN, L), dot(gN, L), dot(bN, L));
                 
-                float3 diffuse = lightcolor.rgb * SkinDiffuse(ndl3, curvature);
-                // float3 diffuse = lightcolor.rgb * SimonInterpolate(ndl3, curvature);
+                float3 diffuse = lightcolor * SkinDiffuse(ndl3, curvature) * SkinShadow(atten, _TunePenumbraWidth);
+                // float3 diffuse = lightcolor * SimonInterpolate(ndl3, curvature);
                 col += diffcolor * diffuse;
 
                 //specular
@@ -183,8 +180,26 @@
                 float G = SmithJointGGXVisibilityTerm (ndl, ndv, roughness);
                 float D = GGXTerm (ndh, roughness);
                 float3 F = FresnelTerm (speccolor, ldh);
-                float3 specular = ndl * lightcolor.rgb * G * D * F;
+                float3 specular = ndl * lightcolor * G * D * F * atten;
                 col += speccolor * specular;
+
+                //Translucency
+                float4 lightcoord = mul(_LightMatrix, float4(i.worldPos, 1));
+                lightcoord.xyz = lightcoord.xyz/lightcoord.w*0.5+0.5;
+                #if UNITY_REVERSED_Z 
+                    float depth = saturate(lightcoord.z - 1 + tex2D(_LightDepthMap, lightcoord.xy).x);
+                #else
+                    float depth = saturate(lightcoord.z - tex2D(_LightDepthMap, lightcoord.xy).x);
+                #endif
+                float sigma_t = 10;
+                col += exp(-depth * sigma_t) * lightcolor*0.1*saturate(dot(-oldN, L))*saturate(dot(-V, L))*_BloodColor.rgb;
+
+                //ambient
+                float3 ambient = 0;
+                #if UNITY_SHOULD_SAMPLE_SH
+                    ambient = ShadeSHPerPixel(N, ambient, i.worldPos)*occlusion;
+                #endif
+                col += diffcolor * ambient;
 
                 //ibl
                 half mip = roughness * (1.7 - 0.7*roughness)*UNITY_SPECCUBE_LOD_STEPS;
@@ -192,7 +207,6 @@
                 float3 IBLColor = DecodeHDR(rgbm, unity_SpecCube0_HDR)*occlusion;
                 col += speccolor * IBLColor;
 
-                // col = atten;
                 return float4(col, 1);
             }
             ENDCG
