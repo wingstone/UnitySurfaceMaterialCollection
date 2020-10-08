@@ -32,6 +32,7 @@
             return saturate(pos*2-1);
         }
 
+        //penumbraLocation为归一化后的在半影区域内的位置；
         float3 integrateShadowScattering(float penumbraLocation, float penumbraWidth)
         {
             float3 totalWeights = 0;
