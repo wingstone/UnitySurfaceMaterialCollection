@@ -257,7 +257,7 @@ MonoBehaviour:
     m_Bits: 4294967295
   blurSize: 2.5
   textureSize: 1024
-  m_blutIterate: 1
+  m_blutIterate: 3
 --- !u!23 &184137524
 MeshRenderer:
   m_ObjectHideFlags: 0
