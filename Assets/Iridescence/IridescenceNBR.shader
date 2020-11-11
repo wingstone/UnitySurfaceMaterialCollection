@@ -1,4 +1,6 @@
-﻿Shader "Environment/ClearCoat"
+﻿
+//https://www.shadertoy.com/view/ll2GD3
+Shader "ShadingModel/IridescenceNPR"
 {
     Properties
     {
@@ -7,6 +9,11 @@
         _OcclusionTex ("Occlusion Texture", 2D) = "white" {}
         _Roughness("Roughness", Range(0, 1)) = 1
         _Metallic("Metallic", Range(0, 1)) = 0
+        _IridescenceInten("IridescenceInten", Range(0, 1.0)) = 0
+        _IridescenceBand("IridescenceBand", Range(0.2, 5.0)) = 1.0
+        _IridescenceOffset("IridescenceOffset", Range(0, 2)) = 0
+        _IridescenceAniso("IridescenceAniso", Range(0, 1)) = 0
+        _IridescenceTint("IridescenceTint", Color) = (1,1,1,1)
     }
     SubShader
     {
@@ -49,6 +56,11 @@
             sampler2D _OcclusionTex;
             float _Roughness;
             float _Metallic;
+            float _IridescenceInten;
+            float _IridescenceBand;
+            float _IridescenceOffset;
+            float _IridescenceAniso;
+            float4 _IridescenceTint;
 
             v2f vert (appdata v)
             {
@@ -67,6 +79,23 @@
 
                 UNITY_TRANSFER_LIGHTING(o, v.uv);
                 return o;
+            }
+
+            float3 UnityEnviromentBRDF(float3 SpecularColor, float roughness, float VDotN)
+            {
+                float surfaceReduction = 1.0 / (Pow4(roughness) + 1.0);
+                surfaceReduction = 1.0 / (Pow4(roughness) + 1.0);
+                float oneMinusReflectivity = 1 - SpecularStrength(SpecularColor);
+                half grazingTerm = saturate(1 - roughness + (1 - oneMinusReflectivity));
+                half t = Pow4(1 - VDotN);
+                half3 fresnel = lerp(SpecularColor, grazingTerm, t);
+
+                return surfaceReduction * fresnel;
+            }
+
+            float3 pal( in float t, in float3 a, in float3 b, in float3 c, in float3 d )
+            {
+                return a + b*cos( 6.28318*(c*t+d) );
             }
 
             float4 frag (v2f i) : SV_Target
@@ -93,10 +122,15 @@
 
                 //shadow light
                 UNITY_LIGHT_ATTENUATION(atten, i, i.worldPos);
-                float3 lightcolor = _LightColor0.rgb*UNITY_PI;
+                float3 lightcolor = _LightColor0.rgb;
                 
                 float3 diffuse = lightcolor * ndl*atten;
                 col += diffcolor * diffuse;
+
+                //Iridescence
+                float zoom = _IridescenceBand * lerp(ndv, dot(V, i.binormal), _IridescenceAniso) + _IridescenceOffset;
+                float3 Iridescence = pal(zoom, float3(0.5,0.5,0.5),float3(0.5,0.5,0.5),float3(1.0,1.0,1.0),float3(0.0,0.33,0.67) );
+                speccolor = lerp(speccolor, speccolor*Iridescence*_IridescenceTint.rgb, _IridescenceInten);
 
                 //specular
                 float roughness = max(_Roughness, 0.002);
@@ -104,7 +138,7 @@
                 float D = GGXTerm (ndh, roughness);
                 float3 F = FresnelTerm (speccolor, ldh);
                 float3 specular = ndl * lightcolor * G * D * F * atten;
-                col += speccolor * specular;
+                col += specular;
 
                 //ambient
                 float3 ambient = 0;
@@ -117,7 +151,7 @@
                 half mip = roughness * (1.7 - 0.7*roughness)*UNITY_SPECCUBE_LOD_STEPS;
                 half4 rgbm = UNITY_SAMPLE_TEXCUBE_LOD(unity_SpecCube0, R, mip);
                 float3 IBLColor = DecodeHDR(rgbm, unity_SpecCube0_HDR)*occlusion;
-                col += speccolor * IBLColor;
+                col += UnityEnviromentBRDF(speccolor, roughness, ndv) * IBLColor;
 
                 return float4(col, 1);
             }
