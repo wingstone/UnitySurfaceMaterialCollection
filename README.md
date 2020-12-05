@@ -11,4 +11,4 @@ include script tool to create preintegrate skin texture and preintegrate shadow 
 
 result:
 
-![预积分皮肤](Images/preintegrate skin.jpg);
+![预积分皮肤](Images/preintegrate skin.png);
