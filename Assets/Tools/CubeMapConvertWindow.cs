@@ -24,6 +24,7 @@ namespace Tools
         //  unity methods
         // --------------------------------------------------------------------------------
 
+        Texture2D srcTex;
         Cubemap cubemap;
         Material toCubematerial;
         Shader toCubeshader;
@@ -35,56 +36,47 @@ namespace Tools
         public void OnGUI()
         {
             // texture
-            cubemap = EditorGUILayout.ObjectField(cubemap, typeof(Cubemap)) as Cubemap;
+            // srcTex = EditorGUILayout.ObjectField(srcTex, typeof(Texture2D), false) as Texture2D;
+            // toCubeshader = EditorGUILayout.ObjectField(toCubeshader, typeof(Shader), false) as Shader;
+            // if (toCubeshader)
+            //     toCubematerial = new Material(toCubeshader);
 
-            toCubematerial = EditorGUILayout.ObjectField(toCubematerial, typeof(Material)) as Material;
-            toMatcapmaterial = EditorGUILayout.ObjectField(toMatcapmaterial, typeof(Material)) as Material;
+            // cubemap = new Cubemap(256, TextureFormat.RGBA32, false);
 
-            matcapView = EditorGUILayout.Vector3Field("Matcap View", matcapView);
+
+
+            cubemap = EditorGUILayout.ObjectField(cubemap, typeof(Cubemap), false) as Cubemap;
+            toMatcapshader = EditorGUILayout.ObjectField(toMatcapshader, typeof(Shader), false) as Shader;
+            if (toMatcapshader)
+                toMatcapmaterial = new Material(toMatcapshader);
 
             if (GUILayout.Button("Convert To Matcap"))
             {
-                RenderTexture rt = RenderTexture.GetTemporary(1024, 1024, 0, RenderTextureFormat.ARGB32);
-                toMatcapmaterial.SetTexture("_Cubemap", cubemap);
-                Graphics.Blit(rt, rt, toMatcapmaterial, 0);
+                for (int i = 0; i <= 10; i++)
+                {
+                    int width = 1024 >> i;
+                    RenderTexture rt = RenderTexture.GetTemporary(width, width, 0, RenderTextureFormat.ARGB32);
+                    toMatcapmaterial.SetTexture("_Cubemap", cubemap);
+                    toMatcapmaterial.SetFloat("_LOD", i);
+                    toMatcapmaterial.SetFloat("_SrcMipmapCount", cubemap.mipmapCount);
+                    toMatcapmaterial.SetFloat("_OmegaPInv", 6.0f * cubemap.width * cubemap.width / (4f * Mathf.PI));
+                    // Debug.Log(cubemap.width);
 
-                var tex = new Texture2D(1024, 1024);
-                RenderTexture.active = rt;
-                tex.ReadPixels(new Rect(0, 0, 1024, 1024), 0, 0);
-                tex.Apply();
-                File.WriteAllBytes(AssetDatabase.GetAssetPath(cubemap) + "_Matcap.png", tex.EncodeToPNG());
+                    Graphics.Blit(rt, rt, toMatcapmaterial, 0);
 
-                AssetDatabase.Refresh();
-            }
+                    var tex = new Texture2D(width, width);
+                    RenderTexture.active = rt;
+                    tex.ReadPixels(new Rect(0, 0, width, width), 0, 0);
+                    tex.Apply();
+                    RenderTexture.ReleaseTemporary(rt);
 
-            if (GUILayout.Button("Convert To Cylindrical"))
-            {
-                RenderTexture rt = RenderTexture.GetTemporary(1024, 1024, 0, RenderTextureFormat.ARGB32);
-                toMatcapmaterial.SetTexture("_Cubemap", cubemap);
-                Graphics.Blit(rt, rt, toMatcapmaterial, 1);
-
-                var tex = new Texture2D(2048, 1024);
-                RenderTexture.active = rt;
-                tex.ReadPixels(new Rect(0, 0, 2048, 1024), 0, 0);
-                tex.Apply();
-                File.WriteAllBytes(AssetDatabase.GetAssetPath(cubemap) + "_Cylinder.png", tex.EncodeToPNG());
-
-                AssetDatabase.Refresh();
-            }
-
-            if (GUILayout.Button("Convert To SphereMap"))
-            {
-                RenderTexture rt = RenderTexture.GetTemporary(1024, 1024, 0, RenderTextureFormat.ARGB32);
-                toMatcapmaterial.SetTexture("_Cubemap", cubemap);
-                Graphics.Blit(rt, rt, toMatcapmaterial, 2);
-
-                var tex = new Texture2D(1024, 1024);
-                RenderTexture.active = rt;
-                tex.ReadPixels(new Rect(0, 0, 1024, 1024), 0, 0);
-                tex.Apply();
-                File.WriteAllBytes(AssetDatabase.GetAssetPath(cubemap) + "_SphereMap.png", tex.EncodeToPNG());
-
-                AssetDatabase.Refresh();
+                    string path = AssetDatabase.GetAssetPath(cubemap) + "_Matcap" + i + ".png";
+                    File.WriteAllBytes(path, tex.EncodeToPNG());
+                    AssetDatabase.Refresh();
+                    TextureImporter importer = AssetImporter.GetAtPath(path) as TextureImporter;
+                    importer.textureType = TextureImporterType.Default;
+                    importer.SaveAndReimport();
+                }
             }
 
             if (GUILayout.Button("Convert To CrossLayout"))
@@ -93,9 +85,9 @@ namespace Tools
                 toMatcapmaterial.SetTexture("_Cubemap", cubemap);
                 Graphics.Blit(rt, rt, toMatcapmaterial, 3);
 
-                var tex = new Texture2D(256*6, 256);
+                var tex = new Texture2D(256 * 6, 256);
                 RenderTexture.active = rt;
-                tex.ReadPixels(new Rect(0, 0, 256*6, 256), 0, 0);
+                tex.ReadPixels(new Rect(0, 0, 256 * 6, 256), 0, 0);
                 tex.Apply();
                 File.WriteAllBytes(AssetDatabase.GetAssetPath(cubemap) + "_CrossLayout.png", tex.EncodeToPNG());
 
