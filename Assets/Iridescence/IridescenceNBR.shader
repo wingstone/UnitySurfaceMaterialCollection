@@ -17,16 +17,19 @@ Shader "ShadingModel/IridescenceNPR"
     }
     SubShader
     {
-        Tags { "LightMode"="ForwardBase" "RenderType"="Opaque" }
+        Tags { "RenderType"="Opaque" }
         LOD 100
 
         Pass
         {
+            Tags { "LightMode" = "ForwardBase" }
+            
             CGPROGRAM
+            #pragma multi_compile_fwdbase
+
             #pragma vertex vert
             #pragma fragment frag
 
-            #pragma multi_compile_fwdbase
 
             #include "UnityCG.cginc"        //常用函数，宏，结构体
             #include "Lighting.cginc"		//光源相关变量
@@ -64,7 +67,7 @@ Shader "ShadingModel/IridescenceNPR"
 
             v2f vert (appdata v)
             {
-                v2f o;
+                v2f o = (v2f)0;
                 o.pos = UnityObjectToClipPos(v.vertex);
                 o.worldPos = mul(UNITY_MATRIX_M, v.vertex).xyz;
                 o.uv = v.uv;
@@ -84,10 +87,9 @@ Shader "ShadingModel/IridescenceNPR"
             float3 UnityEnviromentBRDF(float3 SpecularColor, float roughness, float VDotN)
             {
                 float surfaceReduction = 1.0 / (Pow4(roughness) + 1.0);
-                surfaceReduction = 1.0 / (Pow4(roughness) + 1.0);
                 float oneMinusReflectivity = 1 - SpecularStrength(SpecularColor);
                 half grazingTerm = saturate(1 - roughness + (1 - oneMinusReflectivity));
-                half t = Pow4(1 - VDotN);
+                half t = Pow5(1 - VDotN);
                 half3 fresnel = lerp(SpecularColor, grazingTerm, t);
 
                 return surfaceReduction * fresnel;
@@ -106,7 +108,7 @@ Shader "ShadingModel/IridescenceNPR"
                 float3 speccolor = lerp(unity_ColorSpaceDielectricSpec.rgb, albedo, _Metallic);
                 float3 texNormal = UnpackNormal(tex2D(_NormalTex, i.uv));
                 float occlusion = tex2D(_OcclusionTex, i.uv).r;
-                
+
                 float3 N = normalize(texNormal.x*i.tangent + texNormal.y*i.binormal + texNormal.z*i.normal);
                 float3 L = _WorldSpaceLightPos0.xyz;
                 float3 V = normalize(_WorldSpaceCameraPos - i.worldPos);
@@ -137,15 +139,14 @@ Shader "ShadingModel/IridescenceNPR"
                 float G = SmithJointGGXVisibilityTerm (ndl, ndv, roughness);
                 float D = GGXTerm (ndh, roughness);
                 float3 F = FresnelTerm (speccolor, ldh);
-                float3 specular = ndl * lightcolor * G * D * F * atten;
+                float3 specular = ndl * G * D * UNITY_PI;
+                specular *= lightcolor * F * atten;
                 col += specular;
 
                 //ambient
                 float3 ambient = 0;
-                #if UNITY_SHOULD_SAMPLE_SH
-                    ambient = ShadeSHPerPixel(N, ambient, i.worldPos)*occlusion;
-                #endif
-                col += diffcolor * ambient;
+                ambient = ShadeSH9(half4(N,1))*occlusion;
+                col = diffcolor * ambient;
 
                 //ibl
                 half mip = roughness * (1.7 - 0.7*roughness)*UNITY_SPECCUBE_LOD_STEPS;

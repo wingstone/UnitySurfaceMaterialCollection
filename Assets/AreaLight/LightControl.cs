@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEditor;
 
 //https://blogs.unity3d.com/2015/02/06/extending-unity-5-rendering-pipeline-command-buffers/?_ga=2.191503788.769314826.1613725858-1790831840.1603622218
 //https://github.com/selfshadow/ltc_code
@@ -45,6 +46,7 @@ public class LightControl : MonoBehaviour
         switch (lightType)
         {
             case LightType.Sphere:
+
                 Gizmos.DrawSphere(transform.position + sphereLightPos, sphereLightRedius);
                 break;
             case LightType.Tube:
