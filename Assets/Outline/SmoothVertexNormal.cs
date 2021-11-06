@@ -25,15 +25,14 @@ public class SmoothVertexNormal : MonoBehaviour
             }
             else
             {
-                averageNormalHash[mesh.vertices[j]] =
-                    (averageNormalHash[mesh.vertices[j]] + mesh.normals[j]).normalized;
+                averageNormalHash[mesh.vertices[j]] = averageNormalHash[mesh.vertices[j]] + mesh.normals[j];
             }
         }
 
         var averageNormals = new Vector3[mesh.vertexCount];
         for (var j = 0; j < mesh.vertexCount; j++)
         {
-            averageNormals[j] = averageNormalHash[mesh.vertices[j]];
+            averageNormals[j] = averageNormalHash[mesh.vertices[j]].normalized;
         }
 
         var normals = new Vector3[mesh.vertexCount];

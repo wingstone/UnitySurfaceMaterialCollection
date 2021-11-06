@@ -6,6 +6,7 @@ Shader "ShadingModel/ClearCoat"
     {
         _MainTex ("Main Texture", 2D) = "white" {}
         _NormalTex ("Normal Texture", 2D) = "bump" {}
+        _BentNormalTex ("Bent Normal Texture", 2D) = "bump" {}
         _OcclusionTex ("Occlusion Texture", 2D) = "white" {}
         _Roughness("Roughness", Range(0, 1)) = 1
         _Metallic("Metallic", Range(0, 1)) = 0
@@ -50,6 +51,7 @@ Shader "ShadingModel/ClearCoat"
 
             sampler2D _MainTex;
             sampler2D _NormalTex;
+            sampler2D _BentNormalTex;
             sampler2D _OcclusionTex;
             float _Roughness;
             float _Metallic;
@@ -94,17 +96,23 @@ Shader "ShadingModel/ClearCoat"
                 float3 diffcolor = unity_ColorSpaceDielectricSpec.a*(1.0 - _Metallic)*albedo;
                 float3 speccolor = lerp(unity_ColorSpaceDielectricSpec.rgb, albedo, _Metallic);
                 float3 texNormal = UnpackNormal(tex2D(_NormalTex, i.uv));
+                float3 bentNormal = UnpackNormal(tex2D(_BentNormalTex, i.uv));
                 float occlusion = tex2D(_OcclusionTex, i.uv).r;
                 
                 float3 N = normalize(texNormal.x*i.tangent + texNormal.y*i.binormal + texNormal.z*i.normal);
+                float3 N_C = normalize(bentNormal.x*i.tangent + bentNormal.y*i.binormal + bentNormal.z*i.normal);
                 float3 L = _WorldSpaceLightPos0.xyz;
                 float3 V = normalize(_WorldSpaceCameraPos - i.worldPos);
                 float3 H = normalize(V + L);
                 float3 R = reflect(-V, N);
+                float3 R_C = reflect(-V, N_C);
 
                 float ndl = saturate(dot(N, L));
+                float ndl_C = saturate(dot(N_C, L));
                 float ndv = saturate(dot(N, V));
+                float ndv_C = saturate(dot(N_C, V));
                 float ndh = saturate(dot(N, H));
+                float ndh_C = saturate(dot(N_C, H));
                 float ldh = saturate(dot(L, H));
 
                 float3 col = 0;
@@ -144,16 +152,16 @@ Shader "ShadingModel/ClearCoat"
 
                 //clear coat specular
                 roughness = max(_ClearCoatRoughtness, 0.002);
-                G = SmithJointGGXVisibilityTerm (ndl, ndv, roughness);
-                D = GGXTerm (ndh, roughness);
-                specular = ndl * lightcolor * G * D * ClearCoatF * atten;
+                G = SmithJointGGXVisibilityTerm (ndl_C, ndv_C, roughness);
+                D = GGXTerm (ndh_C, roughness);
+                specular = ndl_C * lightcolor * G * D * ClearCoatF * atten;
                 col += specular;
 
                 //clear coat ibl
                 mip = _ClearCoatRoughtness * (1.7 - 0.7*_ClearCoatRoughtness)*UNITY_SPECCUBE_LOD_STEPS;
                 rgbm = UNITY_SAMPLE_TEXCUBE_LOD(unity_SpecCube0, R, mip);
                 IBLColor = DecodeHDR(rgbm, unity_SpecCube0_HDR)*occlusion;
-                col += UnityEnviromentBRDF(0.04, _ClearCoatRoughtness, ndv) * IBLColor;
+                col += UnityEnviromentBRDF(0.04, _ClearCoatRoughtness, ndv_C) * IBLColor * ClearCoatF;
 
                 return float4(col, 1);
             }
